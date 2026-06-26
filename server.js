@@ -1,16 +1,28 @@
 // modules importation
 const express = require("express")
 const dotenv = require("dotenv")
+const errorMiddleware = require("./middleware/error.middleware")
 const routes = require("./routes/index")
+const mongoose = require("mongoose")
+const connectDB = require("./config/database")
+const swaggerUi = require("swagger-ui-express")
+const swaggerSpec = require("./config/swagger")
+
 
 // configuration
 const app = express()
 dotenv.config()
 
 
+// db
+connectDB()
+
+
 // middlewares
 app.use(express.json())
-app.use("/api/v1", routes)
+app.use("/api/v1/", routes)
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+app.use(errorMiddleware)  //should remain last element on the list
 
 
 // server
