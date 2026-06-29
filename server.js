@@ -14,7 +14,6 @@ const swaggerSpec = require("./config/swagger")
 const app = express()
 dotenv.config()
 
-
 // db
 connectDB()
 
