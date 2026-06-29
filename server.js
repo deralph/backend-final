@@ -1,5 +1,6 @@
 // modules importation
 const express = require("express")
+const cors = require("cors")
 const dotenv = require("dotenv")
 const errorMiddleware = require("./middleware/error.middleware")
 const routes = require("./routes/index")
@@ -17,12 +18,17 @@ dotenv.config()
 // db
 connectDB()
 
+const allowedOrigins = process.env.ALLOWED_ORIGIN.split(",")
 
 // middlewares
 app.use(express.json())
 app.use("/api/v1/", routes)
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use(errorMiddleware)  //should remain last element on the list
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}))
 
 
 // server
