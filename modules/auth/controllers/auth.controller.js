@@ -100,12 +100,12 @@ const loginArtist = asyncHandler(async (req, res) => {
             .select("+password")
     }
 
+
     if (!account) {
         const error = new Error("Invalid credentials")
         error.statusCode = 401
         throw error
     }
-
 
 
     // compare password
@@ -150,5 +150,37 @@ const artistProfile = asyncHandler(async (req, res) => {
 
 })
 
+const logoutArtist = asyncHandler(async(req, res)=>{
 
-module.exports = { loginArtist, registerArtist, artistProfile }
+    // 1. Extract refreshToken or accessToken from request headers or body.
+    const authHeader = req.headers.authorization || req.headers.Authorization
+    const tokenFromHeader = authHeader && typeof authHeader === 'string' ? (authHeader.split(' ')[1] || null) : null
+    const refreshToken = req.body.refreshToken || req.headers['x-refresh-token'] || tokenFromHeader
+
+    // 2. Validate token format and ensure the token exists.
+    if (!refreshToken) {
+        const error = new Error('Required fields missing')
+        error.statusCode = 400
+        throw error
+    }
+
+    // Basic JWT format validation: three dot-separated parts
+    const isJwtLike = typeof refreshToken === 'string' && refreshToken.split('.').length === 3
+    if (!isJwtLike) {
+        const error = new Error('Invalid token format')
+        error.statusCode = 400
+        throw error
+    }
+
+    // 3. If using refresh token persistence, remove or revoke the token in the database/store.
+    // 4. Optionally add the access token to a denylist until it expires.
+    // Simple in-memory denylist. Note: this will be cleared when the process restarts.
+    if (!global.__TOKEN_DENYLIST__) global.__TOKEN_DENYLIST__ = new Set()
+    global.__TOKEN_DENYLIST__.add(refreshToken)
+
+    return res.status(200).json({ message: 'Logged out successfully', success: true })
+
+})
+
+
+module.exports = { loginArtist, registerArtist, artistProfile, logoutArtist }

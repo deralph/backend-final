@@ -1,13 +1,13 @@
 const express = require("express")
 const router = express.Router()
 const auth = require("../../../middleware/auth.middleware")
-const { loginArtist, registerArtist, artistProfile } = require("../controllers/auth.controller")
+const { loginArtist, registerArtist, artistProfile, logoutArtist } = require("../controllers/auth.controller")
 
 /**
  * @swagger
  * /auth/register-artist:
  *   post:
- *     summary: Register artist account
+ *     summary: 
  *     tags:
  *       - Auth
  *     requestBody:
@@ -57,7 +57,7 @@ router.post("/register-artist", registerArtist)
  * @swagger
  * /auth/login-artist:
  *   post:
- *     summary: login artist account
+ *     summary:
  *     tags:
  *       - Auth
  *     requestBody:
@@ -94,7 +94,7 @@ router.post("/login-artist", loginArtist)
 
 /**
  * @swagger
- * /auth/:
+ * /auth/artist-profile:
  *   get:
  *     summary:
  *     tags:
@@ -108,7 +108,38 @@ router.post("/login-artist", loginArtist)
  *         description: Account not found
  */
 // artistProfile
-router.get("/", auth, artistProfile)
+router.get("/artist-profile", auth, artistProfile)
+
+/**
+ * @swagger
+ * /auth/logout-artist:
+ *   post:
+ *     summary: 
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *       400:
+ *         description: |
+ *           Possible errors:
+ *           - Required fields missing
+ *           - Invalid token format
+ */
+
+// artistProfile
+router.post("/logout-artist", logoutArtist)
 
 
 

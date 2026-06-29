@@ -14,10 +14,9 @@ const authenticate = (req, res, next) => {
 
         // Check Bearer format
         if (!authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid authorization format"
-            });
+            const error = new Error("Invalid authorization format")
+            error.status = 401
+            throw error
         }
 
         // Extract token
