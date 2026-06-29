@@ -14,7 +14,7 @@ const options = {
                 url: "http://localhost:7000/api/v1"  //development
             },
             {
-                url: "https://intelimerch-app.vercel.app/api/v1"  //production
+                url: "https://intelimerch-api-production.up.railway.app/api/v1"  //production 
             }
         ],
         components: {
