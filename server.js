@@ -24,10 +24,7 @@ app.use(express.json())
 app.use("/api/v1/", routes)
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use(errorMiddleware)  //should remain last element on the list
-app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-}))
+app.use(cors())
 
 
 // server
