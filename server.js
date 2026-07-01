@@ -20,10 +20,7 @@ connectDB()
 const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",")
 
 // middlewares
-app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-}))
+app.use(cors())
 app.use(express.json())
 app.use("/api/v1/", routes)
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
