@@ -17,7 +17,7 @@ dotenv.config()
 // db
 connectDB()
 
-const allowedOrigins = process.env.ALLOWED_ORIGIN.split(",")
+const allowedOrigins = process.env.ALLOWED_ORIGINS.split(",")
 
 // middlewares
 app.use(cors({
