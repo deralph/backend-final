@@ -20,11 +20,11 @@ connectDB()
 const allowedOrigins = process.env.ALLOWED_ORIGIN.split(",")
 
 // middlewares
+app.use(cors())
 app.use(express.json())
 app.use("/api/v1/", routes)
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use(errorMiddleware)  //should remain last element on the list
-app.use(cors())
 
 
 // server
