@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler")
 const Artists = require("../../artist/artist.model")
 const Accounts = require("../../auth/model/account.model")
 const InternalTeam = require("../../internalTeam/internalTeam.model")
+const Roles = require("../../internalTeam/role.model")
 const hashPassword = require("../../../shared/utils/hashPassword")
 const generateJWT = require("../../../shared/utils/JWT")
 const comparePassword = require("../../../shared/utils/comparePassword")
@@ -45,25 +46,36 @@ const registerArtist = asyncHandler(async (req, res) => {
     // hash password
     const hashedPassword = await hashPassword(password)
 
-
-    // register artist
-    const artist = await Artists.create({
-        firstName,
-        middleName,
-        lastName,
+    // create account
+    const account = await Accounts.create({
         userName,
         email,
         phone,
-        password: hashedPassword
+        password: hashedPassword,
+        accountType: ACCOUNT.TYPE.ARTIST,
     })
-
-    if (!artist) {
+    if (!account) {
         const error = new Error("Internal server error occured creating artist")
         error.statusCode = 500
         throw error
     }
 
-    const payload = { accountId: artist._id, accountType: artist.accountType }
+    // register artist
+    const artist = await Artists.create({
+        accountId: account._id,
+        firstName,
+        middleName,
+        lastName,
+    })
+
+    if (!artist) {
+        await Accounts.findByIdAndDelete(account._id)
+        const error = new Error("Internal server error occured creating artist")
+        error.statusCode = 500
+        throw error
+    }
+
+    const payload = { accountId: account._id, accountType: account.accountType }
     const accessToken = generateJWT(payload, "accessToken")
     const refreshToken = generateJWT(payload, "refreshToken")
 
@@ -73,10 +85,53 @@ const registerArtist = asyncHandler(async (req, res) => {
         refreshToken,
         accessToken,
         data: {
-            artist
+            firstName: artist.firstName,
+            middleName: artist.middleName,
+            lastName: artist.lastName,
+            userName: account.userName,
+            email: account.email,
+            isEmailConfirmed: artist.isEmailConfirmed,
+            accountType: account.accountType,
+            accountStatus: account.accountStatus
         }
     })
 
+})
+
+const createRole = asyncHandler(async (req, res) => {
+
+    const name = req.body.name?.trim().toLowerCase();
+    const description = req.body.description?.trim();
+
+    if (!name || !description) {
+        const error = new Error("Required fields missing")
+        error.statusCode = 400
+        throw error
+    }
+
+    const roleExists = await Roles.findOne({ name })
+    if (roleExists) {
+        const error = new Error("Role already exists")
+        error.statusCode = 400
+        throw error
+    }
+
+    const role = await Roles.create({
+        name,
+        description
+    })
+
+    if (!role) {
+        const error = new Error("Internal server error occured creating role")
+        error.statusCode = 500
+        throw error
+    }
+
+    return res.status(201).json({
+        message: "Role created successfully",
+        success: true,
+        data: role
+    })
 })
 
 
@@ -85,24 +140,33 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
     // only admin can register internal team, verify who's about to take this action
     const accountId = req.user.accountId
 
-    const account = await InternalTeam.find({ accountId: accountId })
+    const account = await InternalTeam.findOne({ accountId: accountId }).populate("roleId")
     if (!account) {
         const error = new Error("Account not found")
         error.statusCode = 404
         throw error
     }
-    if (account.role !== ACCOUNT.ROLE.SUPER_ADMIN) {
+
+
+    if (account.roleId.name !== ACCOUNT.ROLE.ADMIN.toLocaleLowerCase()) {
         const error = new Error("Action denied")
         error.statusCode = 403
         throw error
     }
 
     // collect req data
-    const { firstName, middleName, lastName, userName, email, phone, password, role } = req.body
+    const { firstName, middleName, lastName, userName, email, phone, password, roleId } = req.body
 
     // check for empty fields
-    if (!firstName || !lastName || !userName || !phone || !email || !password || !role) {
+    if (!firstName || !lastName || !userName || !phone || !email || !password || !roleId) {
         const error = new Error("Required fields missing")
+        error.statusCode = 400
+        throw error
+    }
+
+    const roleExists = await Roles.findById(roleId)
+    if (!roleExists) {
+        const error = new Error("Invalid role")
         error.statusCode = 400
         throw error
     }
@@ -136,6 +200,7 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
     const newAccount = await Accounts.create({
         email,
         phone,
+        userName,
         password: hashedPassword,
         accountType: ACCOUNT.TYPE.INTERNAL_TEAM,
     })
@@ -150,7 +215,7 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
         firstName,
         middleName,
         lastName,
-        role
+        roleId
     })
 
     if (!internalTeamAccount) {
@@ -171,7 +236,7 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
             isEmailConfirmed: internalTeamAccount.isEmailConfirmed,
             accountType: newAccount.accountType,
             accountStatus: newAccount.accountStatus,
-            role: internalTeamAccount.role
+            roleId: internalTeamAccount.roleId
         }
     })
 
@@ -281,10 +346,11 @@ const profile = asyncHandler(async (req, res) => {
             middleName: retrievedAccount.middleName,
             lastName: retrievedAccount.lastName,
             email: retrievedAccount.email,
-            emailVerified: retrievedAccount.emailVerified,
+            emailVerified: retrievedAccount.isEmailConfirmed,
+            emailConfirmedAt: retrievedAccount.emailConfirmedAt,
             accountType: account.accountType,
             accountStatus: account.accountStatus,
-            role: account.accountType === ACCOUNT.TYPE.INTERNAL_TEAM ? retrievedAccount.role : ""
+            ...(account.accountType === ACCOUNT.TYPE.INTERNAL_TEAM && { role: retrievedAccount.role })
         }
     })
 
@@ -324,4 +390,4 @@ const logout = asyncHandler(async (req, res) => {
 })
 
 
-module.exports = { registerArtist, registerInternalTeam, login, profile, logout }
+module.exports = { registerArtist, createRole, registerInternalTeam, login, profile, logout }

@@ -6,7 +6,7 @@ const artistSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     middleName: { type: String },
     lastName: { type: String, required: true },
-    isEmailConfirmed: { type: Boolean },
+    isEmailConfirmed: { type: Boolean, default: false },
     emailConfirmedAt: { type: Date, default: null },
 },
     {

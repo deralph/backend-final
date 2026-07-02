@@ -1,7 +1,7 @@
 const express = require("express")
 const router = express.Router()
 const auth = require("../../../middleware/auth.middleware")
-const { login, registerArtist, registerInternalTeam, profile, logout } = require("../controllers/auth.controller")
+const { registerArtist, login, createRole, registerInternalTeam, profile, logout } = require("../controllers/auth.controller")
 
 /**
  * @swagger
@@ -19,6 +19,7 @@ const { login, registerArtist, registerInternalTeam, profile, logout } = require
  *             required:
  *               - firstName
  *               - lastName
+ *               - userName
  *               - email
  *               - password
  *             properties:
@@ -53,7 +54,6 @@ const { login, registerArtist, registerInternalTeam, profile, logout } = require
 //register
 router.post("/register-artist", registerArtist)
 
-
 /**
  * @swagger
  * /auth/register-internal-team:
@@ -61,6 +61,8 @@ router.post("/register-artist", registerArtist)
  *     summary: 
  *     tags:
  *       - Auth
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -71,6 +73,8 @@ router.post("/register-artist", registerArtist)
  *               - firstName
  *               - lastName
  *               - email
+ *               - userName
+ *               - roleId
  *               - password
  *             properties:
  *               firstName:
@@ -84,6 +88,8 @@ router.post("/register-artist", registerArtist)
  *               email:
  *                 type: string
  *               phone:
+ *                 type: string
+ *               roleId:
  *                 type: string
  *               password:
  *                 type: string
@@ -103,6 +109,45 @@ router.post("/register-artist", registerArtist)
 
 //register
 router.post("/register-internal-team", auth, registerInternalTeam)
+
+/**
+ * @swagger
+ * /auth/create-role:
+ *   post:
+ *     summary: 
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: role created successfully
+ *       400:
+ *         description: |
+ *           Possible errors:
+ *           - Required fields missing
+ *           - Email already exists
+ *           - Phone already exists
+ *           - Password must be at least 8 characters
+ *       500:
+ *         descripton: Internal server error occured creating role
+ */
+
+//create role
+router.post("/create-role", auth, createRole)
 
 
 /**
@@ -197,7 +242,7 @@ router.get("/me/profile", auth, profile)
  */
 
 // artistProfile
-router.post("/logout", logoutArtist)
+router.post("/logout", logout)
 
 
 

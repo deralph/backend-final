@@ -8,7 +8,7 @@ const internalTeamSchema = new mongoose.Schema({
     lastName: { type: String, required: true },
     isEmailConfirmed: { type: Boolean, default: false },
     emailConfirmedAt: { type: Date, default: null },
-    role: { type: String, required: true }
+    roleId: { type: mongoose.Schema.Types.ObjectId, ref: "roles", required: true }
 },
     {
         timestamps: true

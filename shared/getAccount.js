@@ -7,16 +7,16 @@ async function getAccount(accountId, accountType) {
 
     let account
     if (accountType === ACCOUNT.TYPE.ARTIST) {
-        account = await Artists.find({ accountId: accountId })
+        account = await Artists.findOne({ accountId: accountId })
     }
 
     else if (accountType === ACCOUNT.TYPE.INTERNAL_TEAM) {
-        account = await InternalTeam.find({ accountId: accountId })
+        account = await InternalTeam.findOne({ accountId: accountId })
     }
 
 
     else if (accountType === ACCOUNT.TYPE.FAN) {
-        account = await Fans.find({ accountId: accountId })
+        account = await Fans.findOnew({ accountId: accountId })
     }
 
     return account
