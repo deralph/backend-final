@@ -30,10 +30,10 @@ const options = {
                 description: "Administrative endpoints",
             },
 
-            {
-                name: "Campaigns",
-                description: "Campaign endpoints",
-            },
+            // {
+            //     name: "Campaigns",
+            //     description: "Campaign endpoints",
+            // },
 
             {
                 name: "Products",
