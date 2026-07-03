@@ -1,5 +1,5 @@
 const mongoose = require("mongoose")
-const ACCOUNT = require("../../shared/constants/account")
+const ACCOUNT = require("../../../shared/constants/account")
 
 const internalTeamSchema = new mongoose.Schema({
     accountId: { type: mongoose.Schema.Types.ObjectId, ref: "accounts", required: true },

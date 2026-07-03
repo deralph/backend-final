@@ -17,6 +17,35 @@ const options = {
                 url: "https://intelimerch-api-production.up.railway.app/api/v1"  //production 
             }
         ],
+
+
+        tags: [
+            {
+                name: "Auth",
+                description: "Authentication endpoints",
+            },
+
+            {
+                name: "Admin",
+                description: "Administrative endpoints",
+            },
+
+            {
+                name: "Campaigns",
+                description: "Campaign endpoints",
+            },
+
+            {
+                name: "Products",
+                description: "Product endpoints",
+            },
+
+            {
+                name: "Perks",
+                description: "Perk category endpoints",
+            },
+        ],
+
         components: {
             securitySchemes: {
                 bearerAuth: {

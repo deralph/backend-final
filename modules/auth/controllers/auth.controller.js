@@ -1,8 +1,8 @@
 const asyncHandler = require("express-async-handler")
 const Artists = require("../../artist/artist.model")
 const Accounts = require("../../auth/model/account.model")
-const InternalTeam = require("../../internalTeam/internalTeam.model")
-const Roles = require("../../internalTeam/role.model")
+const InternalTeam = require("../../internalTeam/model/internalTeam.model")
+const Roles = require("../../internalTeam/model/role.model")
 const hashPassword = require("../../../shared/utils/hashPassword")
 const generateJWT = require("../../../shared/utils/JWT")
 const comparePassword = require("../../../shared/utils/comparePassword")
@@ -22,7 +22,8 @@ const registerArtist = asyncHandler(async (req, res) => {
         throw error
     }
 
-    const isEmailExist = await Artists.findOne({ email })
+    const isEmailExist = await Accounts.findOne({ email, accountType: ACCOUNT.TYPE.ARTIST })
+
     if (isEmailExist) {
         const error = new Error("Email already registered with another account")
         error.statusCode = 400
@@ -232,7 +233,7 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
             firstName: internalTeamAccount.firstName,
             middleName: internalTeamAccount.middleName,
             lastName: internalTeamAccount.lastName,
-            email: internalTeamAccount.email,
+            email: newAccount.email,
             isEmailConfirmed: internalTeamAccount.isEmailConfirmed,
             accountType: newAccount.accountType,
             accountStatus: newAccount.accountStatus,
@@ -304,7 +305,7 @@ const login = asyncHandler(async (req, res) => {
                 firstName: retrievedAccount.firstName,
                 middleName: retrievedAccount.middleName,
                 lastName: retrievedAccount.lastName,
-                email: retrievedAccount.email,
+                email: account.email,
                 isEmailConfirmed: retrievedAccount.isEmailConfirmed,
                 accountType: account.accountType,
                 accountStatus: account.accountStatus,
@@ -345,7 +346,7 @@ const profile = asyncHandler(async (req, res) => {
             firstName: retrievedAccount.firstName,
             middleName: retrievedAccount.middleName,
             lastName: retrievedAccount.lastName,
-            email: retrievedAccount.email,
+            email: account.email,
             emailVerified: retrievedAccount.isEmailConfirmed,
             emailConfirmedAt: retrievedAccount.emailConfirmedAt,
             accountType: account.accountType,

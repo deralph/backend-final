@@ -1,5 +1,5 @@
 const Artists = require("../modules/artist/artist.model")
-const InternalTeam = require("../modules/internalTeam/internalTeam.model")
+const InternalTeam = require("../modules/internalTeam/model/internalTeam.model")
 const Fans = require("../modules/fan/fan.model")
 const ACCOUNT = require("../shared/constants/account")
 
