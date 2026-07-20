@@ -9,7 +9,6 @@ const createPerk = asyncHandler(async (req, res) => {
         perkCategoryId,
         contentType,
         description,
-        campaignId,
     } = req.body;
 
     if (!perkName || !perkCategoryId || !contentType) {
@@ -27,7 +26,6 @@ const createPerk = asyncHandler(async (req, res) => {
         contentType,
         fileUrl: "https://cdn.intelimerch.com/perks/video123.mp4",
         description,
-        ...(campaignId && { campaignId })
     });
 
     res.status(201).json({
@@ -47,7 +45,6 @@ const getPerks = asyncHandler(async (req, res) => {
     const [perks, total] = await Promise.all([
         Perks.find({ artistId })
             .populate("perkCategoryId", "name")
-            .populate("campaignId", "campaignName")
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
@@ -86,7 +83,6 @@ const updatePerk = asyncHandler(async (req, res) => {
         "perkCategoryId",
         "contentType",
         "description",
-        "campaignId",
     ];
 
     allowedFields.forEach((field) => {

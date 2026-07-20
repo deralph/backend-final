@@ -37,11 +37,6 @@ const perkSchema = new mongoose.Schema(
             trim: true,
         },
 
-        campaignId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "campaigns",
-        },
-
         status: {
             type: String,
             enum: ["active", "inactive", "expired"],

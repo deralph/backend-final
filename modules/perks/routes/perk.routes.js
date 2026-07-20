@@ -50,9 +50,6 @@ router.use(auth); // Apply authentication middleware to all routes in this route
  *                 description: URL of the uploaded file
  *               description:
  *                 type: string
- *               campaignId:
- *                 type: string
- *                 description: Campaign ObjectId (optional)
  *     responses:
  *       201:
  *         description: Perk created successfully

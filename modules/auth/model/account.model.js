@@ -8,7 +8,7 @@ const accountSchema = new mongoose.Schema(
         userName: { type: String, unique: true },
         password: { type: String, required: true, select: false },
         accountType: { type: String, required: true, enum: [ACCOUNT.TYPE.ARTIST, ACCOUNT.TYPE.INTERNAL_TEAM, ACCOUNT.TYPE.FAN] },
-        accountStatus: { type: String, default: ACCOUNT.STATUS.ACIVE },
+        accountStatus: { type: String, default: ACCOUNT.STATUS.ACTIVE },
     },
     {
         timestamps: true

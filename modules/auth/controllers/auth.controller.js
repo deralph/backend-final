@@ -99,6 +99,7 @@ const registerArtist = asyncHandler(async (req, res) => {
 
 })
 
+
 const createRole = asyncHandler(async (req, res) => {
 
     const name = req.body.name?.trim().toLowerCase();

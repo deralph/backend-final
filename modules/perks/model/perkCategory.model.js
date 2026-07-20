@@ -14,6 +14,13 @@ const perkCategorySchema = new mongoose.Schema(
             trim: true,
         },
 
+        tierId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "tiers",
+            required: true,
+            trim: true,
+        },
+
         avatar: {
             type: String,
             required: true,

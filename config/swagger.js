@@ -42,7 +42,7 @@ const options = {
 
             {
                 name: "Perks",
-                description: "Perk category endpoints",
+                description: "Perks endpoints",
             },
         ],
 
