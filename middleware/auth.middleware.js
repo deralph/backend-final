@@ -15,7 +15,7 @@ const authenticate = (req, res, next) => {
         // Check Bearer format
         if (!authHeader.startsWith("Bearer ")) {
             const error = new Error("Invalid authorization format")
-            error.status = 401
+            error.statusCode = 401
             throw error
         }
 
@@ -33,7 +33,8 @@ const authenticate = (req, res, next) => {
 
         next();
 
-    } catch (error) {
+    }
+    catch (error) {
         return res.status(401).json({
             success: false,
             message: "Invalid or expired token"

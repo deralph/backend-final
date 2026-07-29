@@ -1,49 +1,34 @@
 const Tags = require("../tags/tag.model")
 const campaignProducts = require("../campaign/model/campaignProducts.model")
-
-// TagId generator: to be improved to tag generation with UUID 
-let count = 0
-async function generateTagId() {
-    const id = Math.random(Math.floor() * 10000)
-    const isIdExist = Tags.findOne({ tagId: id })
-    if (isIdExist) {
-        if (count > 5) {
-            const error = new Error("Error occured creating tag")
-            error.statudCode = 500
-            throw error
-        }
-        generateTagId()
-        count++
-    }
-
-    return String(id);
-}
+const TagCounts = require("./tagCounter.model")
 
 // generate tag
-async function generateTag(campaignProductId) {
+async function generateTag(campaignId, productVariantId, tierId, session) {
 
     // validation of parameters is done in caller program
-
-    const tagId = await generateTagId()
+    let tagCount
+    tagCount = await TagCounts.findOne().session(session)
+    if (!tagCount) {
+        tagCount = TagCounts.create()
+    }
+    count = tagCount.nextNumber
+    const tagId = "NFC" + "-" + String(count).padStart(3, "0")
 
     const tagData = {
         tagId,
-        campaignProductId
+        campaignId,
+        productVariantId,
+        tierId
     }
 
-    const isCampaignProductExist = await campaignProducts.findById(campaignProductId)
-    if (!tag) {
-        const error = new Error("Campaign product not found")
-        error.statusCode = 500
-        throw error
-    }
-
-    const tag = await Tags.create(tagData)
+    const [tag] = await Tags.create([{ tagData }], { session })
     if (!tag) {
         const error = new Error("Error occured creating tag")
         error.statusCode = 500
         throw error
     }
+
+    TagCounts.findOne({ _id: tagCount._id }, { $inc: { nextNumber: 1 } }).session(session)
 
     return tag;
 

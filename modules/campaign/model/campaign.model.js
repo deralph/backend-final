@@ -14,13 +14,6 @@ const campaignSchema = new mongoose.Schema(
             trim: true,
         },
 
-        socialLinks: [
-            {
-                platform: { type: String, required: true },
-                url: { type: String, required: true }
-            }
-        ],
-
         startDate: {
             type: Date,
             required: true,
@@ -31,9 +24,16 @@ const campaignSchema = new mongoose.Schema(
             required: true,
         },
 
-        pageStructure: {
-            type: mongoose.Schema.Types.Mixed,
-            required: true,
+        mediaType: {
+            type: String,
+            required: false,
+            enum: ["audio", "video", "image", "link", "document"],
+        },
+
+        fileUrl: {
+            type: String,
+            trim: true,
+            required: false
         },
 
         status: {

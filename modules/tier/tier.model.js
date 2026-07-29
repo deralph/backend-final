@@ -5,6 +5,7 @@ const TierSchema = new mongoose.Schema({
         type: String, //e.g "1" 
         required: true,
         trim: true,
+        unique: true
     },
     description: {
         type: String,

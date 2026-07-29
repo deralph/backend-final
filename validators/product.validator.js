@@ -15,8 +15,25 @@ const createProductSchema = joi.object({
         .trim(),
 
     description: joi.string()
-        .trim()
+        .trim(),
 
+    color: joi.string()
+        .required()
+        .trim(),
+
+    size: joi.string()
+        .required()
+        .trim(),
+
+    campaignId: joi.string()
+        .hex()
+        .length(24)
+        .optional(),
+
+    productTier: joi.string()  //collecting product tier in Id
+        .hex()
+        .length(24)
+        .optional()
 })
 
 

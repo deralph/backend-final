@@ -1,10 +1,14 @@
+const mongoose = require("mongoose")
 const asyncHandler = require("express-async-handler");
 const Products = require("../../products/models/product.model")
 const Perks = require("../../perks/model/perk.model")
 const Campaigns = require("../model/campaign.model")
+const CampaignPages = require("../model/campaignPage.model")
 const campaignPerks = require("../model/campaignPerks.model")
+const Tiers = require("../../tier/tier.model")
 const generateTag = require("../../tags/tag.model")
 const throwError = require("../../../shared/utils/throwError")
+const { createCampaignPerks, createCampaignProducts } = require("../services/campaign.services");
 
 
 // Validators
@@ -19,78 +23,121 @@ async function isCampaignExist(campaignId) {
 
 
 const createCampaign = asyncHandler(async (req, res) => {
+    const session = await mongoose.startSession()
+    try {
+        session.startTransaction()
+        const accountId = req.user.accountId
 
-    const accountId = req.user.accountId
+        // collect data
+        const {
+            campaignName,
+            startDate,
+            endDate,
+            perks,
+            // products, Requirement changed: field eliminated, products are not added to campaign during campaign creation
+            media,
+            mediaType,
+            mediaUrl, // for already uploaded media i.e where mediaType == "Link"
+            status,
+        } = req.body;
 
-    // create campaign
-    const {
-        campaignName,
-        products,
-        perks,
-        socialLinks,
-        startDate,
-        endDate,
-        pageStructure,
-        status,
-    } = req.body;
+        // validate uploaded file
+        if (["audio", "video", "image", "document"].includes(mediaType) && !req.file) {
+            const error = new Error("Media file is missing");
+            error.statusCode = 400;
+            throw error;
+        }
 
-    if (
-        !campaignName ||
-        !products ||
-        products.length === 0 ||
-        !perks ||
-        perks.length === 0 ||
-        !startDate ||
-        !endDate ||
-        !pageStructure
-    ) {
-        throwError("Required fields missing", 400)
+        // validate perks existence
+        for (let count = 0; count < perks.length; count++) {   // perks = ["perkId1", "perkId2", ...,"perkIdn"]
+            const isPerkExist = await Perks.findOne({ _id: perks[count], artistId: accountId }).session(session)
+            if (!isPerkExist) {
+                const error = new Error(`Perk of Id ${perks[count]} does not exist`)
+            }
+        }
+
+        // validate product existence ; Requirement changed: products are not added to campaign during campaign creation
+        // for (let count = 0; count < products.length; count++) {   // perks = ["perkId1", "perkId2", ...,"perkIdn"]
+        //     const isProductExist = await Products.findOne({ _id: products[count].productId, artistId: accountId }).session(session)
+        //     if (!isProductExist) {
+        //         const error = new Error(`Product of Id ${products[count]} does not exist`)
+        //         error.statusCode = 400
+        //         throw error
+        //     }
+        //     else if (!(await Tiers.findById(products[count].tierId))) {
+        //         const error = new Error(`Invalid tierId assign to Product of Id ${products[count].productId}`)
+        //         error.statusCode = 400
+        //         throw error
+        //     }
+        // }
+
+        // upload media to cdn
+        let fileUrl
+        if (mediaType != "link") {
+            fileUrl = ""   //upload to cloudinary
+        }
+
+
+        // create campaign
+        const [newCampaign] = await Campaigns.create([{
+            artistId: accountId,
+            campaignName,
+            startDate,
+            endDate,
+            mediaType,
+            fileUrl: fileUrl || mediaUrl,
+            status
+        }], { session });
+
+        // create campaign perks
+        await createCampaignPerks(perks, newCampaign._id, session)
+
+        //   create campaign products - Requirement changed: products are not added to campaign during campaign creation
+        // await createCampaignProducts(products, newCampaign._id, session)
+
+        // commit transaction
+        await session.commitTransaction()
+
+        // return response
+        res.status(201).json({
+            message: "Campaign created successfully",
+            campaign: newCampaign
+        });
     }
-
-    // validate if product and perks exist
-    const isProductsExist = await Products.find({ _id: { $in: products }, artistId: accountId });
-    if (isProductsExist.length !== products.length) {
-        const error = new Error("One or more products do not exist");
-        error.statusCode = 400;
-        throw error;
+    catch (error) {
+        await session.abortTransaction()
+        throw error
     }
-
-    const isPerksExist = await Perks.find({ _id: { $in: perks }, artistId: accountId });
-    if (isPerksExist.length !== perks.length) {
-        const error = new Error("One or more perks do not exist");
-        error.statusCode = 400;
-        throw error;
+    finally {
+        await session.endSession()
     }
-
-    const newCampaign = await Campaigns.create({
-        artistId: accountId,
-        campaignName,
-        products,
-        perks,
-        socialLinks,
-        startDate,
-        endDate,
-        pageStructure,
-        status
-    });
-
-    if (!newCampaign) {
-        const error = new Error("Error occured whilecreating campaign");
-        error.statusCode = 500;
-        throw error;
-    }
-
-    // generate campaign unique url
-    const campaignUrl = `${process.env.WEB_APP_URL}/campaigns/${newCampaign._id}`;
-
-    res.status(201).json({
-        message: "Campaign created successfully",
-        campaign: newCampaign,
-        campaignUrl
-    });
 
 })
 
+const createCampaignPage = asyncHandler(async (req, res) => {
+    const accountId = req.user.accountId
+    const { campaignId } = req.params
+    const { pageStructure } = req.body
+
+    if (!(await Campaigns.findOne({ _id: campaignId, artistId: accountId }))) {
+        const error = new Error("Campaign not found")
+    }
+
+    const campaignPage = await CampaignPages.create({
+        campaignId,
+        pageStructure
+    })
+
+    return res.status(201).json({
+        success: true,
+        message: "Campaign page created",
+        data: {
+            campaignPage
+        }
+    })
+})
+
+/*
 const createCampaignProducts = asyncHandler(async (req, res) => {
     const { campaignId } = req.params;
     const accountId = req.user.accountId
@@ -167,22 +214,13 @@ const createCampaignPerks = asyncHandler(async (req, res) => {
     return res.status(201).json({ message: "Campaign perks created successfully", campaignPerks })
 
 })
-
-const generateCampaignProductTags = asyncHandler(async (req, res) => {
-    /* requirements;
-        - campaignProductId
-        - Qty(Max 10)
-    */
-
-        
-})
+*/
 
 
 
 
 module.exports = {
     createCampaign,
-    createCampaignProducts,
+    createCampaignPage,
     createCampaignPerks,
-    generateCampaignProductTags
 }

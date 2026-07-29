@@ -28,22 +28,20 @@ const validate = require("../../../middleware/validate")
  *               - color
  *               - size
  *               - sku
- *               - batchNumber
- *               - productId
  *             properties:
  *               productName:
  *                 type: string
  *               productType:
  *                 type: string
+ *               description:
+ *                 type: string
  *               color:
  *                 type: string
  *               size:
  *                 type: string
- *               sku:
+ *               campainId:
  *                 type: string
- *               batchNumber:
- *                 type: string
- *               productId:
+ *               productTier:
  *                 type: string
  *     responses:
  *       201:

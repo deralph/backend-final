@@ -3,6 +3,11 @@ const mongoose = require("mongoose")
 const Products = require("../models/product.model")
 const ProductTypes = require("../models/productType.model")
 const ProductCodeCounts = require("../models/productCodeCounts.model")
+const ProductVariants = require("../models/productVariant.model")
+const ProductColors = require("../models/color.model")
+const ProductSizes = require("../models/size.model")
+const { assignProductToCampaign } = require("../services/product.service")
+const generateCode = require("../../../utils/generateCode")
 
 const createProduct = asyncHandler(async (req, res) => {
     // collect data
@@ -12,6 +17,10 @@ const createProduct = asyncHandler(async (req, res) => {
         productType, //collect name(as in "t-shirt") not Id
         productCode, // optional, not required if product type already exist.
         description,
+        color,
+        size,
+        campaignId,
+        productTier
     } = req.body;
 
     const session = await mongoose.startSession()
@@ -31,8 +40,8 @@ const createProduct = asyncHandler(async (req, res) => {
             }
             [productTypeDoc] = await ProductTypes.create([{ type: productType, code: req.body.productCode }], { session })
         }
-        
-        // no two in the same product category should have the same name
+
+        // no two products in the same product category should have the same name
         const productAlreadyInProdCategory = await Products.findOne({ productName, productTypeId: productTypeDoc._id })
         if (productAlreadyInProdCategory) {
             const error = new Error(`${productName} already exist in "${productTypeDoc.type}" product category`)
@@ -69,13 +78,51 @@ const createProduct = asyncHandler(async (req, res) => {
         // update productCount doc
         await ProductCodeCounts.findByIdAndUpdate(productCodeCount._id, { $inc: { nextNumber: 1 } }, { returnDocument: "after", runValidators: true, session })
 
+
+        // create variant - service 
+        // get colorId
+        let colorDoc
+        const colorCode = generateCode(color)
+        colorDoc = await ProductColors.findOne({ code: colorCode }).session(session)
+        if (!colorCode) {
+            [colorDoc] = await ProductColors.create([{ name: color, code: colorCode }], { session })
+        }
+        const colorId = colorDoc._id
+
+        // get sizeId
+        let sizeDoc
+        const sizeCode = generateCode(size)
+        sizeDoc = await ProductSizes.findOne({ code: sizeCode }).session(session)
+        if (!sizeDoc) {
+            [sizeDoc] = await ProductSizes.create([{ size: size, code: sizeCode }], { session })
+        }
+        const sizeId = sizeDoc._id
+
+
+        const sku = fullProductCode + "-" + colorCode + "-" + sizeCode
+        const [variant] = await ProductVariants([{ productId: newProduct._id, colorId: colorId, sizeId: sizeId, sku }], { session })
+
+        const tier = await Tiers.findOne({ name: productTier })
+        const tierId = tier._id
+
+        // if campaignId, create campaign product and tag - services
+        if (campaignId) {
+            const [campaignProduct] = await assignProductToCampaign(newProduct._id, campaignId, tierId, session)
+            // create tag
+            const tag = await createTag(campaignId, variant._id, tierId, session)
+            // tag link = {baseUrl/nfc/io/tag._id}
+            const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
+        }
+
         await session.commitTransaction()
 
         return res.status(201).json({
             success: true,
             message: "Product created succssfully",
             data: {
-                product: newProduct
+                product: newProduct,
+                tag,
+                tagLink
             }
         })
     }
@@ -88,7 +135,7 @@ const createProduct = asyncHandler(async (req, res) => {
     }
 });
 
- 
+
 const getProducts = asyncHandler(async (req, res) => {
 
     const artistId = req.user.accountId
