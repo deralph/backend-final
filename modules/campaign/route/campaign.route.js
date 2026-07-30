@@ -12,7 +12,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *   post:
  *     summary: Create campaign
  *     tags:
- *       - Campaign
+ *       - campaigns
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -67,7 +67,6 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *       500:
  *         description: Internal server error occurred creating campaign
  */
-
 router.post("/", auth, validate(createCampaignSchema), createCampaign)
 
 // create campaign page
