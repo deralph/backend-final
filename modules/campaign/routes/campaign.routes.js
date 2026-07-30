@@ -95,6 +95,62 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
 // create campaign
 router.post("/", auth, validate(createCampaignSchema), createCampaign)
 
+
+/**
+ * @swagger
+ * /campaigns/{campaignId}/pages:
+ *   post:
+ *     summary: Create campaign page
+ *     tags:
+ *       - Campaigns
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the campaign.
+ *         example: "6889f6b4d3a8f2c1e5a9b123"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - pageStructure
+ *             properties:
+ *               pageStructure:
+ *                 type: object
+ *                 description: JSON representation of the campaign page layout.
+ *                 example:
+ *                   sections:
+ *                     - type: hero
+ *                       title: "Welcome to the Campaign"
+ *                       subtitle: "Unlock exclusive perks"
+ *                       backgroundImage: "https://cdn.intelimerch.com/hero.jpg"
+ *                     - type: products
+ *                       title: "Featured Merchandise"
+ *                       items: []
+ *                     - type: perks
+ *                       title: "Exclusive Perks"
+ *                       items: []
+ *     responses:
+ *       201:
+ *         description: Campaign page created successfully.
+ *       400:
+ *         description: |
+ *           Possible errors:
+ *             - Campaign does not exist.
+ *             - Campaign page already exists.
+ *             - Invalid page structure.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error occurred while creating the campaign page.
+ */
 // create campaign page
 router.post("/:campaignId/pages", auth, createCampaignPage)
 

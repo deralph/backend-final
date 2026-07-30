@@ -113,6 +113,8 @@ const createCampaignPage = asyncHandler(async (req, res) => {
 
     if (!(await Campaigns.findOne({ _id: campaignId, artistId: accountId }))) {
         const error = new Error("Campaign not found")
+        error.statusCode = 400
+        throw error
     }
 
     const campaignPage = await CampaignPages.create({
