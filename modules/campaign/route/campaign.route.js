@@ -23,23 +23,34 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *             type: object
  *             required:
  *               - campaignName
+ *               - perks
  *               - startDate
  *               - endDate
- *               - perks
  *               - mediaType
  *             properties:
  *               campaignName:
  *                 type: string
+ *                 example: "Summer Giveaway Campaign"
+ *
  *               perks:
  *                 type: array
+ *                 description: Array of perk IDs to associate with the campaign.
+ *                 items:
+ *                   type: string
+ *                 example:
+ *                   - "6889f6b4d3a8f2c1e5a9b123"
+ *                   - "6889f6b4d3a8f2c1e5a9b124"
+ *
  *               startDate:
- *                 type: date
- *               format: date-time
+ *                 type: string
+ *                 format: date-time
  *                 example: "2026-08-01T10:00:00.000Z"
+ *
  *               endDate:
- *                 type: date
- *               format: date-time
- *                 example: "2026-08-01T10:00:00.000Z"
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-08-31T23:59:59.000Z"
+ *
  *               mediaType:
  *                 type: string
  *                 enum:
@@ -48,24 +59,38 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *                   - video
  *                   - document
  *                   - link
+ *                 example: "image"
+ *
  *               mediaUrl:
  *                 type: string
- *                 description: URL of the uploaded file
+ *                 description: URL of the uploaded campaign media.
+ *                 example: "https://cdn.intelimerch.com/campaigns/banner.jpg"
+ *
  *               status:
  *                 type: string
+ *                 enum:
+ *                   - active
+ *                   - inactive
+ *                 example: "active"
+ *
  *     responses:
  *       201:
- *         description: Campaign created successfully
+ *         description: Campaign created successfully.
+ *
  *       400:
  *         description: |
  *           Possible errors:
- *           - campaign name is not available
- *           - Media file is missing
- *           - Perk does not exist
+ *             - Campaign name already exists.
+ *             - One or more perks do not exist.
+ *             - One or more perks have already been assigned to the campaign.
+ *             - Media file is missing.
+ *             - Invalid campaign dates.
+ *
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized.
+ *
  *       500:
- *         description: Internal server error occurred creating campaign
+ *         description: Internal server error occurred while creating the campaign.
  */
 router.post("/", auth, validate(createCampaignSchema), createCampaign)
 
