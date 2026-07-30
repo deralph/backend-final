@@ -10,7 +10,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  * @swagger
  * /campaigns:
  *   post:
- *     summary: Create a new perk
+ *     summary: Create campaign
  *     tags:
  *       - Campaign
  *     security:
@@ -30,6 +30,8 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *             properties:
  *               campaignName:
  *                 type: string
+ *               perks:
+ *                 type: array
  *               startDate:
  *                 type: date
  *               endDate:
