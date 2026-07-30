@@ -6,7 +6,7 @@ const adminRoutes = require("../modules/internalTeam/routes/admin.routes")
 const artistRoutes = require("../modules/artist/artist.routes")
 const productRoutes = require("../modules/products/routes/product.routes")
 const perkRoutes = require("../modules/perks/routes/perk.routes")
-const campaignRoutes = require("../modules/campaign/route/campaign.route")
+const campaignRoutes = require("../modules/campaign/routes/campaign.routes")
 const tierRoutes = require("../modules/tier/tier.route")
 
 // setup routes

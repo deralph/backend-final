@@ -50,7 +50,7 @@ const createCampaign = asyncHandler(async (req, res) => {
         }
 
         // validate uploaded file
-        if (["audio", "video", "image", "document"].includes(mediaType) && !req.file) {
+        if (!mediaUrl && (["audio", "video", "image", "document"].includes(mediaType) && !req.file)) {
             const error = new Error("Media file is missing");
             error.statusCode = 400;
             throw error;
