@@ -34,8 +34,12 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *                 type: array
  *               startDate:
  *                 type: date
+ *               format: date-time
+ *                 example: "2026-08-01T10:00:00.000Z"
  *               endDate:
  *                 type: date
+ *               format: date-time
+ *                 example: "2026-08-01T10:00:00.000Z"
  *               mediaType:
  *                 type: string
  *                 enum:
