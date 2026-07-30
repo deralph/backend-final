@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Perks = require("../model/perk.model");
+const PerkCategory = require("../model/perkCategory.model")
 
 const createPerk = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId;
@@ -17,14 +18,27 @@ const createPerk = asyncHandler(async (req, res) => {
         throw error;
     }
 
-    const fileUrl = req.file?.path || req.fileUrl || null;
+    // validate perks categoryId
+    const isPerkCategoryValid = await PerkCategory.findById(perkCategoryId)
+    if(!isPerkCategoryValid){
+ const error = new Error("Perk category does not exist");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const fileUrl = req.file?.path || req.fileUrl || req.body.fileUrl || null;
+    if(!fileUrl){
+        const error = new Error("No file attached, file is required");
+        error.statusCode = 400;
+        throw error;
+    }
 
     const perk = await Perks.create({
         artistId,
         perkName,
         perkCategoryId,
         contentType,
-        fileUrl: "https://cdn.intelimerch.com/perks/video123.mp4",
+        fileUrl,
         description,
     });
 

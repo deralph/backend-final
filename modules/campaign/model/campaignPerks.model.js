@@ -9,10 +9,9 @@ const campaignPerksSchema = new mongoose.Schema({
         required: true,
     },
 
-    perks: {
-        type: [{
-            type: mongoose.Schema.Types.ObjectId, ref: "perks", required: true,
-        }],
+    perkId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "perks",
         required: true
     }
 },

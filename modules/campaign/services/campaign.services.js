@@ -4,25 +4,33 @@ const CampaignProducts = require("../model/campaignProducts.model")
 
 
 async function createCampaignPerks(perkIds, campaignId, session) {
-    const campaignPerksData = {
-        campaignId,
-        perks: perkIds
+
+    // validate if perks already exist in campaign
+   const existingPerk = await CampaignPerks.findOne({
+    campaignId,
+    perkId: { $in: perkIds }
+}).session(session);
+if (existingPerk) {
+    const error = new Error("Duplicate perk error. One or more perks already exist in campaign");
+    error.statusCode = 400
+    throw error
+}
+
+let campaignPerksData = []
+for(let count = 0; count < perkIds.length ; count++){
+    const data = {
+        campaignId: campaignId,
+        perkId: perkIds[count]
     }
-    const [campaignPerks] = await CampaignPerks.create([campaignPerksData], { session })
+    campaignPerksData.push(data)
+}
+
+    const campaignPerks = await CampaignPerks.insertMany(campaignPerksData, { session })
     return campaignPerks
 }
 
-async function createCampaignProduct(productId, campaignId, session) {
-
-    // check if product already exist, do not re-add - skip to variant addition
-    const isProductAlreadyInCampaign = await CampaignProducts.findOne({ _id: campaignId, product: productId }).session(session)
-    if (!sProductAlreadyInCampaign) {
-        const [campaignProduct] = await CampaignProducts.create([campaignProductsData], { session })
-        return campaignProduct
-    }
-}
 
 
 
 
-module.exports = { createCampaignPerks, createCampaignProduct }
+module.exports = { createCampaignPerks }

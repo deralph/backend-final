@@ -23,7 +23,7 @@ const perkSchema = new mongoose.Schema(
         contentType: {
             type: String,
             required: true,
-            enum: ["video", "image", "link", "document"],
+            enum: ["audio", "video", "image", "link", "document"],
         },
 
         fileUrl: {

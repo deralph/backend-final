@@ -32,6 +32,6 @@ const perkCategorySchema = new mongoose.Schema(
     }
 )
 
-PerkCategory = mongoose.model("perk-category", perkCategorySchema)
+const PerkCategory = mongoose.model("perk-categories", perkCategorySchema)
 
 module.exports = PerkCategory

@@ -64,6 +64,7 @@ router.use(auth); // Apply authentication middleware to all routes in this route
  *       500:
  *         description: Internal server error occurred creating perk
  */
+
 router.post("/", createPerk);
 
 /**
