@@ -5,7 +5,7 @@ const auth = require("../../../middleware/auth.middleware")
 const validate = require("../../../middleware/validate")
 const { createCampaignSchema } = require("../../../validators/campaign.validator")
 
-// create campaign
+
 /**
  * @swagger
  * /campaigns:
@@ -92,6 +92,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *       500:
  *         description: Internal server error occurred while creating the campaign.
  */
+// create campaign
 router.post("/", auth, validate(createCampaignSchema), createCampaign)
 
 // create campaign page
