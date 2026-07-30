@@ -8,7 +8,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
 // create campaign
 /**
  * @swagger
- * /perks:
+ * /campaigns:
  *   post:
  *     summary: Create a new perk
  *     tags:
