@@ -12,7 +12,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *   post:
  *     summary: Create campaign
  *     tags:
- *       - campaigns
+ *       - Campaigns
  *     security:
  *       - bearerAuth: []
  *     requestBody:
