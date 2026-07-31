@@ -14,9 +14,38 @@ const options = {
                 url: "http://localhost:7000/api/v1"  //development
             },
             {
-                url: "https://intelimerch-app.vercel.app/api/v1"  //production
+                url: "https://intelimerch-api-production.up.railway.app/api/v1"  //production 
             }
         ],
+
+
+        tags: [
+            {
+                name: "Auth",
+                description: "Authentication endpoints",
+            },
+
+            {
+                name: "Admin",
+                description: "Administrative endpoints",
+            },
+
+            {
+                name: "Campaigns",
+                description: "Campaign endpoints",
+            },
+
+            {
+                name: "Products",
+                description: "Product endpoints",
+            },
+
+            {
+                name: "Perks",
+                description: "Perks endpoints",
+            },
+        ],
+
         components: {
             securitySchemes: {
                 bearerAuth: {

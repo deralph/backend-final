@@ -1,8 +1,13 @@
 const asyncHandler = require("express-async-handler")
 const Artists = require("../../artist/artist.model")
+const Accounts = require("../../auth/model/account.model")
+const InternalTeam = require("../../internalTeam/model/internalTeam.model")
+const Roles = require("../../internalTeam/model/role.model")
 const hashPassword = require("../../../shared/utils/hashPassword")
 const generateJWT = require("../../../shared/utils/JWT")
 const comparePassword = require("../../../shared/utils/comparePassword")
+const getAccount = require("../../../shared/getAccount")
+const ACCOUNT = require("../../../shared/constants/account")
 
 
 const registerArtist = asyncHandler(async (req, res) => {
@@ -17,7 +22,8 @@ const registerArtist = asyncHandler(async (req, res) => {
         throw error
     }
 
-    const isEmailExist = await Artists.findOne({ email })
+    const isEmailExist = await Accounts.findOne({ email, accountType: ACCOUNT.TYPE.ARTIST })
+
     if (isEmailExist) {
         const error = new Error("Email already registered with another account")
         error.statusCode = 400
@@ -41,25 +47,36 @@ const registerArtist = asyncHandler(async (req, res) => {
     // hash password
     const hashedPassword = await hashPassword(password)
 
-
-    // register artist
-    const artist = await Artists.create({
-        firstName,
-        middleName,
-        lastName,
+    // create account
+    const account = await Accounts.create({
         userName,
         email,
         phone,
-        password: hashedPassword
+        password: hashedPassword,
+        accountType: ACCOUNT.TYPE.ARTIST,
     })
-
-    if (!artist) {
+    if (!account) {
         const error = new Error("Internal server error occured creating artist")
         error.statusCode = 500
         throw error
     }
 
-    const payload = { accountId: artist._id, accountType: artist.accountType }
+    // register artist
+    const artist = await Artists.create({
+        accountId: account._id,
+        firstName,
+        middleName,
+        lastName,
+    })
+
+    if (!artist) {
+        await Accounts.findByIdAndDelete(account._id)
+        const error = new Error("Internal server error occured creating artist")
+        error.statusCode = 500
+        throw error
+    }
+
+    const payload = { accountId: account._id, accountType: account.accountType }
     const accessToken = generateJWT(payload, "accessToken")
     const refreshToken = generateJWT(payload, "refreshToken")
 
@@ -69,20 +86,173 @@ const registerArtist = asyncHandler(async (req, res) => {
         refreshToken,
         accessToken,
         data: {
-            artist
+            firstName: artist.firstName,
+            middleName: artist.middleName,
+            lastName: artist.lastName,
+            userName: account.userName,
+            email: account.email,
+            isEmailConfirmed: artist.isEmailConfirmed,
+            accountType: account.accountType,
+            accountStatus: account.accountStatus
         }
     })
 
 })
 
 
-const loginArtist = asyncHandler(async (req, res) => {
+const createRole = asyncHandler(async (req, res) => {
+
+    const name = req.body.name?.trim().toLowerCase();
+    const description = req.body.description?.trim();
+
+    if (!name || !description) {
+        const error = new Error("Required fields missing")
+        error.statusCode = 400
+        throw error
+    }
+
+    const roleExists = await Roles.findOne({ name })
+    if (roleExists) {
+        const error = new Error("Role already exists")
+        error.statusCode = 400
+        throw error
+    }
+
+    const role = await Roles.create({
+        name,
+        description
+    })
+
+    if (!role) {
+        const error = new Error("Internal server error occured creating role")
+        error.statusCode = 500
+        throw error
+    }
+
+    return res.status(201).json({
+        message: "Role created successfully",
+        success: true,
+        data: role
+    })
+})
+
+
+const registerInternalTeam = asyncHandler(async (req, res) => {
+
+    // only admin can register internal team, verify who's about to take this action
+    const accountId = req.user.accountId
+
+    const account = await InternalTeam.findOne({ accountId: accountId }).populate("roleId")
+    if (!account) {
+        const error = new Error("Account not found")
+        error.statusCode = 404
+        throw error
+    }
+
+
+    if (account.roleId.name !== ACCOUNT.ROLE.ADMIN.toLocaleLowerCase()) {
+        const error = new Error("Action denied")
+        error.statusCode = 403
+        throw error
+    }
+
+    // collect req data
+    const { firstName, middleName, lastName, userName, email, phone, password, roleId } = req.body
+
+    // check for empty fields
+    if (!firstName || !lastName || !userName || !phone || !email || !password || !roleId) {
+        const error = new Error("Required fields missing")
+        error.statusCode = 400
+        throw error
+    }
+
+    const roleExists = await Roles.findById(roleId)
+    if (!roleExists) {
+        const error = new Error("Invalid role")
+        error.statusCode = 400
+        throw error
+    }
+
+    const isEmailExist = await Accounts.findOne({ email })
+    if (isEmailExist) {
+        const error = new Error("Email already registered with another account")
+        error.statusCode = 400
+        throw error
+    }
+
+    const isPhoneExist = await Accounts.findOne({ phone })
+    if (isPhoneExist) {
+        const error = new Error("Phone number already registered with another account")
+        error.statusCode = 400
+        throw error
+    }
+
+    const isPasswordLengthValid = password.length >= 8
+    if (!isPasswordLengthValid) {
+        const error = new Error("Minimum password character required is 8")
+        error.statusCode = 400
+        throw error
+    }
+
+    // hash password
+    const hashedPassword = await hashPassword(password)
+
+
+    // register
+    const newAccount = await Accounts.create({
+        email,
+        phone,
+        userName,
+        password: hashedPassword,
+        accountType: ACCOUNT.TYPE.INTERNAL_TEAM,
+    })
+    if (!newAccount) {
+        const error = new Error("Something went wrong creating account")
+        error.statusCode = 500
+        throw error
+    }
+
+    const internalTeamAccount = await InternalTeam.create({
+        accountId: newAccount._id,
+        firstName,
+        middleName,
+        lastName,
+        roleId
+    })
+
+    if (!internalTeamAccount) {
+        await Accounts.findByIdAndDelete(newAccount._id)
+        const error = new Error("Something went wrong creating account")
+        error.statusCode = 500
+        throw error
+    }
+
+    return res.status(201).json({
+        message: "Internal team account created successfully",
+        success: true,
+        data: {
+            firstName: internalTeamAccount.firstName,
+            middleName: internalTeamAccount.middleName,
+            lastName: internalTeamAccount.lastName,
+            email: newAccount.email,
+            isEmailConfirmed: internalTeamAccount.isEmailConfirmed,
+            accountType: newAccount.accountType,
+            accountStatus: newAccount.accountStatus,
+            roleId: internalTeamAccount.roleId
+        }
+    })
+
+})
+
+
+const login = asyncHandler(async (req, res) => {
 
     // collect data from req body
     const email = req.body.email?.trim();
     const phone = req.body.phone?.trim();
     const password = req.body.password;
 
+    // check for empty fields
     if ((!email && !phone) || !password) {
         const error = new Error("Required fields missing")
         error.statusCode = 400
@@ -92,11 +262,11 @@ const loginArtist = asyncHandler(async (req, res) => {
     // validate data
     let account
     if (email) {
-        account = await Artists.findOne({ email })
+        account = await Accounts.findOne({ email })
             .select("+password")
     }
     else {
-        account = await Artists.findOne({ phone })
+        account = await Accounts.findOne({ phone })
             .select("+password")
     }
 
@@ -110,19 +280,37 @@ const loginArtist = asyncHandler(async (req, res) => {
 
     // compare password
     if ((account.email == email || account.phone == phone) && (await comparePassword(password, account.password))) {
+
+        // reject login if account is closed
+        if (account.accountStatus === ACCOUNT.STATUS.CLOSED) {
+            const error = new Error("Account is closed")
+            error.statusCode = 403
+            throw error
+        }
+
         // generate tokens
         const payload = { accountId: account._id, accountType: account.accountType }
         const accessToken = generateJWT(payload, "accessToken")
         const refreshToken = generateJWT(payload, "refreshToken")
 
+        // retrieve account data
+        const retrievedAccount = await getAccount(account._id, account.accountType)
+        if (!retrievedAccount) {
+            const error = new Error("Something went wrong")
+            error.statusCode = 500
+            throw error
+        }
+
         return res.status(200).json({
             message: "Login successful", success: true, refreshToken, accessToken, data: {
-                firstName: account.firstName,
-                middleName: account.middleName,
-                lastName: account.middleName,
+                firstName: retrievedAccount.firstName,
+                middleName: retrievedAccount.middleName,
+                lastName: retrievedAccount.lastName,
                 email: account.email,
-                emailVerified: account.emailVerified,
-                accountType: account.accountType
+                isEmailConfirmed: retrievedAccount.isEmailConfirmed,
+                accountType: account.accountType,
+                accountStatus: account.accountStatus,
+                role: account.accountType === ACCOUNT.TYPE.INTERNAL_TEAM ? retrievedAccount.role : ""
             }
         })
     }
@@ -134,23 +322,44 @@ const loginArtist = asyncHandler(async (req, res) => {
 
 })
 
-const artistProfile = asyncHandler(async (req, res) => {
+
+const profile = asyncHandler(async (req, res) => {
 
     const accountId = req.user.accountId
 
-    const account = await Artists.findById(accountId)
-
+    const account = await Accounts.findById(accountId)
     if (!account) {
         const error = new Error("Account not found")
         error.status = 404
         throw error
     }
 
-    return res.status(200).json({ message: "Account retrieved", success: true, account })
+    // retrieve account data
+    const retrievedAccount = await getAccount(account._id, account.accountType)
+    if (!retrievedAccount) {
+        const error = new Error("Something went wrong")
+        error.statusCode = 500
+        throw error
+    }
+
+    return res.status(200).json({
+        message: "Account retrieved", success: true, data: {
+            firstName: retrievedAccount.firstName,
+            middleName: retrievedAccount.middleName,
+            lastName: retrievedAccount.lastName,
+            email: account.email,
+            emailVerified: retrievedAccount.isEmailConfirmed,
+            emailConfirmedAt: retrievedAccount.emailConfirmedAt,
+            accountType: account.accountType,
+            accountStatus: account.accountStatus,
+            ...(account.accountType === ACCOUNT.TYPE.INTERNAL_TEAM && { role: retrievedAccount.role })
+        }
+    })
 
 })
 
-const logoutArtist = asyncHandler(async(req, res)=>{
+
+const logout = asyncHandler(async (req, res) => {
 
     // 1. Extract refreshToken or accessToken from request headers or body.
     const authHeader = req.headers.authorization || req.headers.Authorization
@@ -183,4 +392,4 @@ const logoutArtist = asyncHandler(async(req, res)=>{
 })
 
 
-module.exports = { loginArtist, registerArtist, artistProfile, logoutArtist }
+module.exports = { registerArtist, createRole, registerInternalTeam, login, profile, logout }

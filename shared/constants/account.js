@@ -1,7 +1,8 @@
 
 const ACCOUNT = {
     STATUS: {
-        ACIVE: "ACTIVE",
+        ACTIVE: "ACTIVE",
+        PENDING: "PENDING",
         CLOSED: "CLOSED"
 
     },
@@ -14,6 +15,7 @@ const ACCOUNT = {
 
     ROLE: {
         SUPER_ADMIN: "SUPER_ADMIN",
+        ADMIN: "ADMIN"
     }
 
 }
