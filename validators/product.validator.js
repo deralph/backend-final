@@ -30,9 +30,8 @@ const createProductSchema = joi.object({
         .length(24)
         .optional(),
 
-    productTier: joi.string()  //collecting product tier in Id
-        .hex()
-        .length(24)
+    productTier: joi.string()  //collecting product tier name e.g "1"
+        .length(1)
         .optional()
 })
 

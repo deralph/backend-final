@@ -6,8 +6,10 @@ const ProductCodeCounts = require("../models/productCodeCounts.model")
 const ProductVariants = require("../models/productVariant.model")
 const ProductColors = require("../models/color.model")
 const ProductSizes = require("../models/size.model")
+const Tiers = require("../../tier/tier.model")
 const { assignProductToCampaign } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
+const {generateTag} = require("../../tags/tag.services")
 
 const createProduct = asyncHandler(async (req, res) => {
     // collect data
@@ -57,6 +59,7 @@ const createProduct = asyncHandler(async (req, res) => {
             [productCodeCount] = await ProductCodeCounts.create([{ productType: productTypeDoc._id }], { session })  //system default the "nextNumber" field to 1 on newly created doc
         }
 
+
         const currentCount = productCodeCount.nextNumber
 
         // create product code
@@ -84,10 +87,11 @@ const createProduct = asyncHandler(async (req, res) => {
         let colorDoc
         const colorCode = generateCode(color)
         colorDoc = await ProductColors.findOne({ code: colorCode }).session(session)
-        if (!colorCode) {
+        if (!colorDoc) {
             [colorDoc] = await ProductColors.create([{ name: color, code: colorCode }], { session })
         }
         const colorId = colorDoc._id
+        
 
         // get sizeId
         let sizeDoc
@@ -98,18 +102,18 @@ const createProduct = asyncHandler(async (req, res) => {
         }
         const sizeId = sizeDoc._id
 
-
         const sku = fullProductCode + "-" + colorCode + "-" + sizeCode
-        const [variant] = await ProductVariants([{ productId: newProduct._id, colorId: colorId, sizeId: sizeId, sku }], { session })
+        const [variant] = await ProductVariants.create([{ productId: newProduct._id, colorId: colorId, sizeId: sizeId, sku }], { session })
 
-        const tier = await Tiers.findOne({ name: productTier })
-        const tierId = tier._id
-
+      
         // if campaignId, create campaign product and tag - services
         if (campaignId) {
+            const tier = await Tiers.findOne({ name: productTier })
+            const tierId = tier._id
+
             const [campaignProduct] = await assignProductToCampaign(newProduct._id, campaignId, tierId, session)
             // create tag
-            const tag = await createTag(campaignId, variant._id, tierId, session)
+            const tag = await generateTag(campaignId, variant._id, tierId, session)
             // tag link = {baseUrl/nfc/io/tag._id}
             const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
         }

@@ -4,7 +4,6 @@ const TagCounts = require("./tagCounter.model")
 
 // generate tag
 async function generateTag(campaignId, productVariantId, tierId, session) {
-
     // validation of parameters is done in caller program
     let tagCount
     tagCount = await TagCounts.findOne().session(session)
