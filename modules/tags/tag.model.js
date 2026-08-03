@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const tagSchema = new mongoose.Schema(
     {
-        tagId: {
+        tagId: { //NFC-001
             type: String,
             required: true,
             unique: true,
@@ -58,8 +58,8 @@ const tagSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-tagSchema.index({ uid: 1 }, { unique: true });
-tagSchema.index({ campaignProductVariantId: 1 });
+tagSchema.index({ tagId: 1 }, { unique: true });
+tagSchema.index({ productVariantId: 1 });
 tagSchema.index({ ownerId: 1 });
 
 const Tags = mongoose.model("tags", tagSchema);
