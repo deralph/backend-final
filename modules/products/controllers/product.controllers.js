@@ -9,7 +9,7 @@ const ProductSizes = require("../models/size.model")
 const Tiers = require("../../tier/tier.model")
 const { assignProductToCampaign } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
-const {generateTag} = require("../../tags/tag.services")
+const { generateTag } = require("../../tags/tag.services")
 
 const createProduct = asyncHandler(async (req, res) => {
     // collect data
@@ -91,7 +91,7 @@ const createProduct = asyncHandler(async (req, res) => {
             [colorDoc] = await ProductColors.create([{ name: color, code: colorCode }], { session })
         }
         const colorId = colorDoc._id
-        
+
 
         // get sizeId
         let sizeDoc
@@ -105,17 +105,31 @@ const createProduct = asyncHandler(async (req, res) => {
         const sku = fullProductCode + "-" + colorCode + "-" + sizeCode
         const [variant] = await ProductVariants.create([{ productId: newProduct._id, colorId: colorId, sizeId: sizeId, sku }], { session })
 
-      
+
         // if campaignId, create campaign product and tag - services
         if (campaignId) {
             const tier = await Tiers.findOne({ name: productTier })
             const tierId = tier._id
 
-            const [campaignProduct] = await assignProductToCampaign(newProduct._id, campaignId, tierId, session)
+            const campaignProduct = await assignProductToCampaign(newProduct._id, campaignId, tierId, session)
+
             // create tag
             const tag = await generateTag(campaignId, variant._id, tierId, session)
             // tag link = {baseUrl/nfc/io/tag._id}
             const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
+
+            await session.commitTransaction()
+
+            return res.status(201).json({
+                success: true,
+                message: "Product created succssfully",
+                data: {
+                    product: newProduct,
+                    campaignProduct, 
+                    tag,
+                    tagLink
+                }
+            })
         }
 
         await session.commitTransaction()
@@ -125,8 +139,7 @@ const createProduct = asyncHandler(async (req, res) => {
             message: "Product created succssfully",
             data: {
                 product: newProduct,
-                tag,
-                tagLink
+                variant
             }
         })
     }

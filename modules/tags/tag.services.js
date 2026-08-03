@@ -5,14 +5,20 @@ const TagCounts = require("./tagCounter.model")
 // generate tag
 async function generateTag(campaignId, productVariantId, tierId, session) {
     // validation of parameters is done in caller program
+
+    // Tags.createIndexes()
+
+    // create tagId
     let tagCount
     tagCount = await TagCounts.findOne().session(session)
     if (!tagCount) {
-        tagCount = TagCounts.create()
+        [tagCount] = await TagCounts.create([{}], { session })
     }
+
     count = tagCount.nextNumber
     const tagId = "NFC" + "-" + String(count).padStart(3, "0")
 
+    // collate tag data
     const tagData = {
         tagId,
         campaignId,
@@ -20,17 +26,18 @@ async function generateTag(campaignId, productVariantId, tierId, session) {
         tierId
     }
 
-    const [tag] = await Tags.create([{ tagData }], { session })
+    // create tag
+    const [tag] = await Tags.create([tagData], { session })
     if (!tag) {
         const error = new Error("Error occured creating tag")
         error.statusCode = 500
         throw error
     }
 
-    TagCounts.findOne({ _id: tagCount._id }, { $inc: { nextNumber: 1 } }).session(session)
+    // update tag counter logic
+    await TagCounts.findOneAndUpdate({ _id: tagCount._id }, { $inc: { nextNumber: 1 } }, { session })
 
     return tag;
-
 }
 
 
