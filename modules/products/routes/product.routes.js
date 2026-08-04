@@ -65,6 +65,124 @@ const validate = require("../../../middleware/validate")
 // create product
 router.post("/", auth, validate(createProductSchema), createProduct)
 
+
+/**
+ * @swagger
+ * /products/{productId}/assign-to-campaign:
+ *   post:
+ *     summary: Assign a product variant to a campaign
+ *     description: Assigns a product variant to a campaign, associates the product with a tier, generates a unique NFC tag, and returns the generated tag link.
+ *     tags:
+ *       - Products
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the product to assign.
+ *         example: "6a709245d8dbb6835650ff29"
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - campaignId
+ *               - tierId
+ *               - variantId
+ *             properties:
+ *               campaignId:
+ *                 type: string
+ *                 example: "6a6b358cea901356b544b173"
+ *
+ *               tierId:
+ *                 type: string
+ *                 example: "6a5f4c406eec4d7749091fc5"
+ *
+ *               variantId:
+ *                 type: string
+ *                 example: "6a7092b8d8dbb6835650ff31"
+ *
+ *     responses:
+ *       200:
+ *         description: Product assigned to campaign successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *
+ *                 message:
+ *                   type: string
+ *                   example: Product assigned to campaign successfully
+ *
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     campaignProduct:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                           example: "6a70a5d9d8dbb6835650ff55"
+ *                         campaignId:
+ *                           type: string
+ *                           example: "6a6b358cea901356b544b173"
+ *                         product:
+ *                           type: string
+ *                           example: "6a709245d8dbb6835650ff29"
+ *                         tierId:
+ *                           type: string
+ *                           example: "6a5f4c406eec4d7749091fc5"
+ *
+ *                     tag:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                           example: "6a70a61ad8dbb6835650ff56"
+ *                         tagId:
+ *                           type: string
+ *                           example: "9f2d0e14-8f90-4f56-9f5d-8a8ef4c8fd11"
+ *                         campaignId:
+ *                           type: string
+ *                           example: "6a6b358cea901356b544b173"
+ *                         productVariantId:
+ *                           type: string
+ *                           example: "6a7092b8d8dbb6835650ff31"
+ *                         tierId:
+ *                           type: string
+ *                           example: "6a5f4c406eec4d7749091fc5"
+ *
+ *                     tagLink:
+ *                       type: string
+ *                       example: https://app.intelimerch.com/nfc/io/6a70a61ad8dbb6835650ff56
+ *
+ *       400:
+ *         description: |
+ *           Possible errors:
+ *             - Product already assigned to this campaign with a different tier.
+ *             - Invalid campaign, tier or variant.
+ *
+ *       401:
+ *         description: Unauthorized.
+ *
+ *       404:
+ *         description: Product not found.
+ *
+ *       500:
+ *         description: Internal server error occurred while assigning the product to the campaign.
+ */
+// assign product to campaign
 router.post("/:productId/assign-to-campaign", auth, assignProductToCampaign)
 
 /**

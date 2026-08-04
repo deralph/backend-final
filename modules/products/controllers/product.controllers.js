@@ -6,6 +6,7 @@ const ProductCodeCounts = require("../models/productCodeCounts.model")
 const ProductVariants = require("../models/productVariant.model")
 const ProductColors = require("../models/color.model")
 const ProductSizes = require("../models/size.model")
+const CampaignProducts = require("../../campaign/model/campaignProducts.model")
 const Tiers = require("../../tier/tier.model")
 const { assignProductToCampaignService } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
@@ -152,28 +153,61 @@ const createProduct = asyncHandler(async (req, res) => {
     }
 });
 
-const assignProductToCampaign = asyncHandler(async (req, res) => {
-    // collate data
-    const artistId = req.user.accountId;
-    const { productId } = req.params;
 
-    const product = await Products.findOne({
-        _id: productId,
-        artistId,
-    });
+const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId, campaignId, tierId
+    const session = await mongoose.startSession()
+    try {
+        session.startTransaction()
+        // collate data
+        const artistId = req.user.accountId;
+        const { productId } = req.params;
 
-    if (!product) {
-        const error = new Error("Product not found");
-        error.statusCode = 404;
-        throw error;
+        const { campaignId, tierId, variantId } = req.body;
+
+        const productVariant = await ProductVariants.findOne({
+            _id: variantId,
+        });
+
+        const product = await Products.findById(productVariant.productId)
+
+        if (!product) {
+            const error = new Error("Product not found");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const campaignProduct = await CampaignProducts.findOne({ campaignId, product: product._id }).session(session)
+        if (campaignProduct && tierId.toString() !== campaignProduct.tierId.toString()) {
+            const error = new Error("Product already assigned to this campaign with a different tier.");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const newCampaignProduct = await assignProductToCampaignService(product._id, campaignId, tierId, session)
+
+        // create tag
+        const tag = await generateTag(campaignId, productVariant._id, tierId, session)
+        // tag link = {baseUrl/nfc/io/tag._id}
+        const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
+
+
+        await session.commitTransaction()
+
+        res.status(200).json({
+            success: true,
+            message: "Product assigned to campaign successfully",
+            data: { campaignProduct: newCampaignProduct, tag, tagLink }
+        });
+
     }
+    catch (error) {
+        await session.abortTransaction()
+        throw error
 
-    await product.deleteOne();
-
-    res.status(200).json({
-        success: true,
-        message: "Product deleted successfully",
-    });
+    }
+    finally {
+        session.endSession()
+    }
 });
 
 
