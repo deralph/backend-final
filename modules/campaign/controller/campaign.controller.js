@@ -133,17 +133,52 @@ const createCampaignPage = asyncHandler(async (req, res) => {
 
 
 const getCampaigns = asyncHandler(async (req, res) => {
-    const accountId = req.user.accountId
-    const campaigns = await Campaigns.find({ artistId: accountId })
+    const artistId = req.user.accountId;
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const { search, status } = req.query;
+
+    const filter = {
+        artistId
+    };
+
+    if (search) {
+        filter.campaignName = {
+            $regex: search,
+            $options: "i"
+        };
+    }
+
+    if (status) {
+        filter.status = status;
+    }
+
+    const [campaigns, total] = await Promise.all([
+        Campaigns.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+
+        Campaigns.countDocuments(filter)
+    ]);
+
     return res.status(200).json({
         success: true,
-        message: "Campaigns retrieved",
-        data: {
-            campaigns
+        message: "Campaigns retrieved successfully.",
+        data: campaigns,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            hasNextPage: page < Math.ceil(total / limit),
+            hasPreviousPage: page > 1
         }
-    })
-})
-
+    });
+});
 
 
 

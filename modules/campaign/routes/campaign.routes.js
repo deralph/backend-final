@@ -155,6 +155,127 @@ router.post("/", auth, validate(createCampaignSchema), createCampaign)
 router.post("/:campaignId/pages", auth, createCampaignPage)
 
 
+/**
+ * @swagger
+ * /campaigns:
+ *   get:
+ *     summary: Retrieve all campaigns
+ *     description: Returns a paginated list of campaigns belonging to the authenticated artist.
+ *     tags:
+ *       - Campaigns
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number.
+ *
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of campaigns per page.
+ *
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search campaigns by campaign name.
+ *         example: "Summer"
+ *
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum:
+ *             - active
+ *             - inactive
+ *             - draft
+ *             - completed
+ *         description: Filter campaigns by status.
+ *         example: "active"
+ *
+ *     responses:
+ *       200:
+ *         description: Campaigns retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Campaigns retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: "6a6b358cea901356b544b173"
+ *                       campaignName:
+ *                         type: string
+ *                         example: "Summer Giveaway"
+ *                       status:
+ *                         type: string
+ *                         example: "active"
+ *                       mediaType:
+ *                         type: string
+ *                         example: "image"
+ *                       mediaUrl:
+ *                         type: string
+ *                         example: "https://cdn.intelimerch.com/campaigns/banner.jpg"
+ *                       startDate:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-08-01T10:00:00.000Z"
+ *                       endDate:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-08-31T23:59:59.000Z"
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 42
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 20
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
+ *                     hasNextPage:
+ *                       type: boolean
+ *                       example: true
+ *                     hasPreviousPage:
+ *                       type: boolean
+ *                       example: false
+ *
+ *       401:
+ *         description: Unauthorized.
+ *
+ *       500:
+ *         description: Internal server error occurred while retrieving campaigns.
+ */
+// get campaigns
 router.get("/", auth, getCampaigns)
 
 
