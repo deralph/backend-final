@@ -2,7 +2,7 @@
 const express = require("express")
 const router = express.Router()
 const auth = require("../../../middleware/auth.middleware")
-const { createProduct, getProducts, updateProduct, deleteProduct } = require("../controllers/product.controllers")
+const { createProduct, assignProductToCampaign, getProducts, updateProduct, deleteProduct } = require("../controllers/product.controllers")
 const { createProductSchema } = require("../../../validators/product.validator")
 const validate = require("../../../middleware/validate")
 
@@ -64,6 +64,8 @@ const validate = require("../../../middleware/validate")
 
 // create product
 router.post("/", auth, validate(createProductSchema), createProduct)
+
+router.post("/:productId/assign-to-campaign", auth, assignProductToCampaign)
 
 /**
  * @swagger

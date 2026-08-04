@@ -7,7 +7,7 @@ const ProductVariants = require("../models/productVariant.model")
 const ProductColors = require("../models/color.model")
 const ProductSizes = require("../models/size.model")
 const Tiers = require("../../tier/tier.model")
-const { assignProductToCampaign } = require("../services/product.service")
+const { assignProductToCampaignService } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
 const { generateTag } = require("../../tags/tag.services")
 
@@ -111,7 +111,7 @@ const createProduct = asyncHandler(async (req, res) => {
             const tier = await Tiers.findOne({ name: productTier })
             const tierId = tier._id
 
-            const campaignProduct = await assignProductToCampaign(newProduct._id, campaignId, tierId, session)
+            const campaignProduct = await assignProductToCampaignService(newProduct._id, campaignId, tierId, session)
 
             // create tag
             const tag = await generateTag(campaignId, variant._id, tierId, session)
@@ -125,7 +125,7 @@ const createProduct = asyncHandler(async (req, res) => {
                 message: "Product created succssfully",
                 data: {
                     product: newProduct,
-                    campaignProduct, 
+                    campaignProduct,
                     tag,
                     tagLink
                 }
@@ -150,6 +150,30 @@ const createProduct = asyncHandler(async (req, res) => {
     finally {
         session.endSession()
     }
+});
+
+const assignProductToCampaign = asyncHandler(async (req, res) => {
+    // collate data
+    const artistId = req.user.accountId;
+    const { productId } = req.params;
+
+    const product = await Products.findOne({
+        _id: productId,
+        artistId,
+    });
+
+    if (!product) {
+        const error = new Error("Product not found");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    await product.deleteOne();
+
+    res.status(200).json({
+        success: true,
+        message: "Product deleted successfully",
+    });
 });
 
 
@@ -245,6 +269,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
 module.exports = {
     createProduct,
+    assignProductToCampaign,
     getProducts,
     updateProduct,
     deleteProduct

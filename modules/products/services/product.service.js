@@ -10,7 +10,7 @@ const createProductVariant = async (productId, color, size, sku, session) => {
 
 
 // Assign product to campaign
-async function assignProductToCampaign(productId, campaignId, tierId, session) {
+async function assignProductToCampaignService(productId, campaignId, tierId, session) {
     // check if product already exist, do not re-add - skip to tag creation
     const productAlreadyInCampaign = await campaignProducts.findOne({ campaignId: campaignId, product: productId }).session(session)
 
@@ -21,4 +21,4 @@ async function assignProductToCampaign(productId, campaignId, tierId, session) {
 }
 
 
-module.exports = { createProductVariant, assignProductToCampaign }
+module.exports = { createProductVariant, assignProductToCampaignService }

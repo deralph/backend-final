@@ -42,8 +42,8 @@ const createCampaign = asyncHandler(async (req, res) => {
         } = req.body;
 
         // campaign Name must be unique
-        const isCampaignExist = await Campaigns.findOne({campaignName}).session(session)
-        if(isCampaignExist){
+        const isCampaignExist = await Campaigns.findOne({ campaignName }).session(session)
+        if (isCampaignExist) {
             const error = new Error(`"${campaignName}" is not available, name already used.`);
             error.statusCode = 400;
             throw error;
@@ -132,6 +132,18 @@ const createCampaignPage = asyncHandler(async (req, res) => {
 })
 
 
+const getCampaigns = asyncHandler(async (req, res) => {
+    const accountId = req.user.accountId
+    const campaigns = await Campaigns.find({ artistId: accountId })
+    return res.status(200).json({
+        success: true,
+        message: "Campaigns retrieved",
+        data: {
+            campaigns
+        }
+    })
+})
+
 
 
 
@@ -140,4 +152,5 @@ const createCampaignPage = asyncHandler(async (req, res) => {
 module.exports = {
     createCampaign,
     createCampaignPage,
+    getCampaigns
 }

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createCampaign, createCampaignPage } = require('../controller/campaign.controller');
+const { createCampaign, createCampaignPage, getCampaigns } = require('../controller/campaign.controller');
 const auth = require("../../../middleware/auth.middleware")
 const validate = require("../../../middleware/validate")
 const { createCampaignSchema } = require("../../../validators/campaign.validator")
@@ -153,6 +153,11 @@ router.post("/", auth, validate(createCampaignSchema), createCampaign)
  */
 // create campaign page
 router.post("/:campaignId/pages", auth, createCampaignPage)
+
+
+router.get("/", auth, getCampaigns)
+
+
 
 
 

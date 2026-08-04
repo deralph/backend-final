@@ -58,7 +58,7 @@ const tagSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-tagSchema.index({ tagId: 1 }, { unique: true });
+
 tagSchema.index({ productVariantId: 1 });
 tagSchema.index({ ownerId: 1 });
 
