@@ -9,6 +9,18 @@ const tapSchema = new mongoose.Schema(
             required: true
         },
 
+        campaignId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "campaigns",
+            required: true
+        },
+
+        artistId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "artists",
+            required: true
+        },
+
         userId: {  // note: it doesn't say ownerId but userId; anyone can attempt a tap, doesn't but everyone wil =l be granted access; useful to track the person trying to tap
             type: mongoose.Schema.Types.ObjectId,
             ref: "fans",
@@ -19,6 +31,12 @@ const tapSchema = new mongoose.Schema(
             type: Boolean,
             enum: [true, false],
             default: null
+        },
+
+        tapType: {
+            type: String,
+            enum: ["fresh", "subsequent", "illegal"],
+            required: true
         },
 
         deviceType: {

@@ -117,6 +117,21 @@ const createProduct = asyncHandler(async (req, res) => {
             const tierId = tier._id
 
             const campaignProduct = await assignProductToCampaignService(newProduct._id, campaignId, tierId, session)
+            // update number of product linked to campaign
+            if (campaignProduct) { // update productLinked in campaign
+                const updatedCampaign = await Campaigns.findByIdAndUpdate(
+                    campaignId,
+                    {
+                        $inc: { productsLinked: 1 }
+                    },
+                    { afterDocument: true, runValidators: true, session }
+                )
+
+                if (!updatedCampaign) {
+                    const error = new Error("Error updating campaign")
+                    throw error
+                }
+            }
 
             // create tag
             const tag = await generateTag(campaignId, variant._id, tierId, session)
@@ -192,6 +207,20 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId
         }
 
         const newCampaignProduct = await assignProductToCampaignService(product._id, campaignId, tierId, session)
+        if (newCampaignProduct) { // update productLinked in campaign
+            const updatedCampaign = await Campaigns.findByIdAndUpdate(
+                campaignId,
+                {
+                    $inc: { productsLinked: 1 }
+                },
+                { afterDocument: true, runValidators: true, session }
+            )
+
+            if (!updatedCampaign) {
+                const error = new Error("Error updating campaign")
+                throw error
+            }
+        }
 
         // create tag
         const tag = await generateTag(campaignId, productVariant._id, tierId, session)

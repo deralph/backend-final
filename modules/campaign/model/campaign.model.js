@@ -62,6 +62,11 @@ const campaignSchema = new mongoose.Schema(
             type: Number,
             default: 0
         },
+
+        productsLinked: {
+            type: Number,
+            default: 0
+        },
         // ===Analytics Ends===
 
         status: {

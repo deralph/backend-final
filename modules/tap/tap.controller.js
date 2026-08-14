@@ -33,7 +33,7 @@ const tap = asyncHandler(async (req, res) => {
         const tapToken = await generateJWT({ tagId }, "tapToken")
 
 
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, req.body.location)
+        await tapTag(tagId, owner?.id, true, req.body.deviceType, "subsequent", req.body.location)
         await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
         await Campaigns.findByIdAndUpdate(
             tag.campaignId,
@@ -56,6 +56,16 @@ const tap = asyncHandler(async (req, res) => {
         // tagModel - tapCount, lastTappedAt
         // campaignModel - tapCount, tagCount, scanCount, claims, conversionRate
 
+        await tapTag(tagId, owner?.id, true, req.body.deviceType, "fresh", req.body.location)
+        await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
+        await Campaigns.findByIdAndUpdate(
+            tag.campaignId,
+            {
+                $inc: { tapCount: 1 },
+                $inc: { scanCount: 1 },
+            }
+        )
+
         const tapToken = generateJWT({ tagId }, "tapToken")
 
         return res.status(200).json({
@@ -65,25 +75,19 @@ const tap = asyncHandler(async (req, res) => {
         })
     }
 
-    // Fresh tap, but owner is not new - owned some tags
-    // if (!isNFCActivated && isOwnerValid) {
-
-    //     const fan = await Fans.findById(owner.id)
-
-    //     const tapToken = generateJWT({ tagId }, "tapToken")
-
-    //     return res.status(200).json({
-    //         success: true,
-    //         message: "Fresh tap detected. Proceed to activate",
-    //         fan,
-
-    //         tapToken
-    //     })
-    // }
-
 
     // if NFC is activated and owner's token is not valid, reject - strange access
     if (isNFCActivated && !isOwnerValid) {
+        await tapTag(tagId, owner?.id, true, req.body.deviceType, "illegal", req.body.location)
+        await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
+        await Campaigns.findByIdAndUpdate(
+            tag.campaignId,
+            {
+                $inc: { tapCount: 1 },
+                $inc: { scanCount: 1 }
+            }
+        )
+
         const error = new Error("Access denied! Merch claimed by another fan")
         error.statusCode = 403
         throw error
@@ -129,8 +133,6 @@ const activateMerch = asyncHandler(async (req, res) => {
             await Campaigns.findByIdAndUpdate(
                 tag.campaignId,
                 {
-                    $inc: { tapCount: 1 },
-                    $inc: { scanCount: 1 },
                     $inc: { tagCount: 1 },
                     $inc: { claims: 1 },
                 },
@@ -162,8 +164,6 @@ const activateMerch = asyncHandler(async (req, res) => {
     }
     finally {
         session.endSession()
-        // track tap
-        await tapTag(tagId, owner?.id, false, req.body.deviceType, req.body.location)
         await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
     }
 })
@@ -184,28 +184,6 @@ const getCampaignPageResources = asyncHandler(async (req, res) => {
 
     const campaignId = tag.campaignId
     const campaignPageResources = await CampaignPerks.find({ campaignId }).populate("perkId")
-
-    // update tag
-    await Tags.findByIdAndUpdate(
-        tagId,
-        {
-            $inc: { tapCount: 1 },
-            lastTappedAt: new Date()
-        }
-    )
-    // update tap
-    await tapTag(tagId, owner.id, true, deviceType, location, session)
-    // update campaign
-    await Campaigns.findByIdAndUpdate(
-        tag.campaignId,
-        {
-            $inc: { tapCount: 1 },
-            $inc: { scanCount: 1 },
-            $inc: { tagCount: 1 },
-            $inc: { claims: 1 },
-        },
-        { afterDocument: true, runValidators: true }
-    )
 
     return res.status(200).json({
         success: true,

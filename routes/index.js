@@ -10,6 +10,8 @@ const campaignRoutes = require("../modules/campaign/routes/campaign.routes")
 const tierRoutes = require("../modules/tier/tier.route")
 const tagRoutes = require("../modules/tags/tag.model")
 const tapRoutes = require("../modules/tap/tap.routes")
+const campaignAnalyticsRoutes = require("../modules/analytics/campaigns/campaignAnalytics.routes")
+const dashboardAnalyticsRoutes = require("../modules/analytics/dashboard/dashboardAnalytics.routes")
 
 // setup routes
 router.use("/auth", authRoutes)
@@ -21,5 +23,7 @@ router.use("/campaigns", campaignRoutes)
 router.use("/tiers", tierRoutes)
 router.use("/tags", tagRoutes)
 router.use("/taps", tapRoutes)
+router.use("/campaigns/analytics", campaignAnalyticsRoutes)
+router.use("/dashboard/analytics", dashboardAnalyticsRoutes)
 
 module.exports = router

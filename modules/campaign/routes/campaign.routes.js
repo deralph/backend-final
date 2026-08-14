@@ -275,7 +275,7 @@ router.post("/:campaignId/pages", auth, createCampaignPage)
  *       500:
  *         description: Internal server error occurred while retrieving campaigns.
  */
-// get campaigns
+// get artist campaigns
 router.get("/", auth, getCampaigns)
 
 
