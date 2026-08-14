@@ -42,6 +42,9 @@ SKU FORMULAR:
     sku = [productCode]-[colorCode]-[sizeCode]
 
 
+A quick confirmation sir,
+what specification on which to put on, polo or tshirt ?
+
 SKU Best Practices
 ✅ One SKU per variant.
 ✅ SKU must be unique.

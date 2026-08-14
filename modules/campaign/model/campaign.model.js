@@ -37,6 +37,33 @@ const campaignSchema = new mongoose.Schema(
             required: false
         },
 
+        // ===Analytics Starts===
+        tapCount: {  // measures how many times the tags for this campaign has been tapped, regardless of whether the tap was successful or not
+            type: Number,
+            default: 0
+        },
+
+        tagCount: {
+            type: Number,
+            default: 0
+        },
+
+        scanCount: {  //measures successful scans only i.e scans that leads to page access
+            type: Number,
+            default: 0
+        },
+
+        claims: {
+            type: Number,
+            default: 0
+        },
+
+        conversionRate: {
+            type: Number,
+            default: 0
+        },
+        // ===Analytics Ends===
+
         status: {
             type: String,
             enum: ["draft", "active", "paused"],

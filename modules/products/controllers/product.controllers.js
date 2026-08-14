@@ -8,9 +8,13 @@ const ProductColors = require("../models/color.model")
 const ProductSizes = require("../models/size.model")
 const CampaignProducts = require("../../campaign/model/campaignProducts.model")
 const Tiers = require("../../tier/tier.model")
+const Campaigns = require("../../campaign/model/campaign.model")
 const { assignProductToCampaignService } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
 const { generateTag } = require("../../tags/tag.services")
+const validateObjectId = require("../../../utils/objectIdValidators")
+
+
 
 const createProduct = asyncHandler(async (req, res) => {
     // collect data
@@ -164,6 +168,10 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId
 
         const { campaignId, tierId, variantId } = req.body;
 
+        await validateObjectId(campaignId, Campaigns, "campaign")
+        await validateObjectId(tierId, Tiers, "tier")
+        await validateObjectId(variantId, ProductVariants, "product variant")
+
         const productVariant = await ProductVariants.findOne({
             _id: variantId,
         });
@@ -187,6 +195,8 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId
 
         // create tag
         const tag = await generateTag(campaignId, productVariant._id, tierId, session)
+        // increament tacgount value in campaign
+        await Campaigns.findByIdAndUpdate(campaignId, { $inc: { tagCount: 1 } }, { session })
         // tag link = {baseUrl/nfc/io/tag._id}
         const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
 
@@ -237,6 +247,7 @@ const getProducts = asyncHandler(async (req, res) => {
         },
     });
 });
+
 
 const updateProduct = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId;

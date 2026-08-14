@@ -40,6 +40,33 @@ async function generateTag(campaignId, productVariantId, tierId, session) {
     return tag;
 }
 
+async function activateTag(tagId, ownerId, location, deviceType, session) {
+
+    const activationData = {
+        ownerId,
+        lastTappedAt: new Date(),
+        status: "activated",
+        activatingLocation: { country: location.country, state: location.state, city: location.city },
+        activatedAt: new Date(),
+        claimedAt: new Date(),
+        activatingDevice: deviceType
+    }
+
+
+    const activatedTag = await Tags.findOneAndUpdate(
+        { _id: tagId },
+        {
+            $set: activationData,
+            $inc: {
+                tapCount: 1
+            }
+        },
+        { returnDocument: "after", runValidators: true, session }
+    )
+
+    return activatedTag
+}
+
 
 // retrieve tag
 async function retrieveTag(tagId) {
@@ -71,4 +98,4 @@ async function retrieveTag(tagId) {
 }
 
 
-module.exports = { generateTag }
+module.exports = { generateTag, activateTag }

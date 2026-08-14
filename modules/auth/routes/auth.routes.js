@@ -1,7 +1,9 @@
 const express = require("express")
 const router = express.Router()
 const auth = require("../../../middleware/auth.middleware")
-const { registerArtist, login, createRole, registerInternalTeam, profile, logout } = require("../controllers/auth.controller")
+const { registerArtist, login, createRole, registerInternalTeam, profile, logout, requestPasswordReset } = require("../controllers/auth.controller")
+const  validate  = require("../../../middleware/validate")
+const { forgotPasswordSchema } = require("../../../validators/forgotPasswordSchema.validator")
 
 /**
  * @swagger
@@ -243,6 +245,65 @@ router.get("/me/profile", auth, profile)
 
 // artistProfile
 router.post("/logout", logout)
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset OTP
+ *     description: |
+ *       Initiates the password reset process for Artists and Internal Team accounts.
+ *
+ *       If the supplied email belongs to a valid account, a 6-digit OTP is
+ *       generated and sent to the registered email address.
+ *
+ *       For security reasons, the API always returns the same response even if
+ *       the email does not exist.
+ *
+ *     tags:
+ *       - Auth
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "artist@example.com"
+ *
+ *     responses:
+ *       200:
+ *         description: Password reset request processed.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *
+ *                 message:
+ *                   type: string
+ *                   example: "If an account exists with this email, an OTP has been sent."
+ *
+ *       400:
+ *         description: Validation failed.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+router.post(
+    "/forgot-password",
+    validate(forgotPasswordSchema),
+    requestPasswordReset
+);
 
 
 

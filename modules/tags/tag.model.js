@@ -9,12 +9,12 @@ const tagSchema = new mongoose.Schema(
             trim: true
         },
 
+
         campaignId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "campaigns",
             required: true
         },
-
 
         productVariantId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -53,6 +53,18 @@ const tagSchema = new mongoose.Schema(
         claimedAt: {
             type: Date,
             default: null
+        },
+
+        activatingLocation: {
+            country: String,
+            state: String,
+            city: String,
+        },
+
+        activatingDevice: {
+            type: String,
+            enum: ["mobile", "tablet", "desktop", "unknown"],
+            default: "unknown"
         }
     },
     { timestamps: true }

@@ -31,6 +31,11 @@ const options = {
             },
 
             {
+                name: "Dashboard",
+                description: "Dashboard endpoints",
+            },
+
+            {
                 name: "Campaigns",
                 description: "Campaign endpoints",
             },
@@ -43,6 +48,21 @@ const options = {
             {
                 name: "Perks",
                 description: "Perks endpoints",
+            },
+
+            {
+                name: "Tags",
+                description: "Tags endpoints",
+            },
+
+            {
+                name: "Taps",
+                description: "Taps endpoints",
+            },
+
+              {
+                name: "Activity Logs",
+                description: "Activity logs endpoints",
             },
         ],
 

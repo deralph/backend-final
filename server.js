@@ -24,7 +24,7 @@ app.use(cors())
 app.use(express.json())
 app.use("/api/v1/", routes)
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
-app.get("/", (req, res)=> res.write("Welcome to Intelimerch"))
+app.get("/", (req, res) => res.write("Welcome to Intelimerch"))
 app.use(errorMiddleware)  //should remain last element on the list
 
 
@@ -35,3 +35,12 @@ app.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`)
 })
 
+
+// const { sendEmail } = require("./utils/sendEmail")
+// async function se() {
+//     const to = "odedejikehinde08@gmail.com"
+//     const subject = "Password Reset OTP"
+//     const text = `<h2>Your OTP is ${123456}. It expires in 10 minutes.</b></h2>`
+//     await sendEmail(to, subject, text)
+// }
+// se()

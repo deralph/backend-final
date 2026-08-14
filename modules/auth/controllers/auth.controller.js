@@ -1,13 +1,16 @@
+const crypto = require("crypto");
 const asyncHandler = require("express-async-handler")
 const Artists = require("../../artist/artist.model")
 const Accounts = require("../../auth/model/account.model")
 const InternalTeam = require("../../internalTeam/model/internalTeam.model")
 const Roles = require("../../internalTeam/model/role.model")
+const PasswordResetRequests = require("../model/PasswordResetRequests.model");
 const hashPassword = require("../../../shared/utils/hashPassword")
 const generateJWT = require("../../../shared/utils/JWT")
 const comparePassword = require("../../../shared/utils/comparePassword")
 const getAccount = require("../../../shared/getAccount")
 const ACCOUNT = require("../../../shared/constants/account")
+const { sendEmail } = require("../../../utils/sendEmail");
 
 
 const registerArtist = asyncHandler(async (req, res) => {
@@ -392,4 +395,69 @@ const logout = asyncHandler(async (req, res) => {
 })
 
 
-module.exports = { registerArtist, createRole, registerInternalTeam, login, profile, logout }
+
+
+const requestPasswordReset = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+    const account = await Accounts.findOne({ email });
+
+    // Always return same response to prevent email enumeration
+    if (!account) {
+        return res.status(200).json({
+            success: true,
+            message: "If an account exists with this email, an OTP has been sent."
+        });
+    }
+
+    // Fans cannot reset password
+    if (account.accountType === ACCOUNT.TYPE.FAN) {
+        return res.status(200).json({
+            success: true,
+            message: "If an account exists with this email, an OTP has been sent."
+        });
+    }
+
+    // Invalidate previous requests
+    await PasswordResetRequests.updateMany(
+        {
+            accountId: account._id,
+            used: false
+        },
+        {
+            used: true
+        }
+    );
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash OTP
+    const otpHash = crypto
+        .createHash("sha256")
+        .update(otp)
+        .digest("hex");
+
+    // Save request
+    await PasswordResetRequests.create({
+        accountId: account._id,
+        otp: otpHash,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+    });
+
+    // Send email
+    const to = account.email
+    const subject = "Password Reset OTP"
+    const text = `<h2>Your OTP is ${otp}. It expires in 10 minutes.</b></h2>`
+    await sendEmail(to, subject, html)
+
+    return res.status(200).json({
+        success: true,
+        message: "If an account exists with this email, an OTP has been sent."
+    });
+});
+
+
+
+
+module.exports = { registerArtist, createRole, registerInternalTeam, login, profile, logout, requestPasswordReset }
