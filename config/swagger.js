@@ -31,11 +31,6 @@ const options = {
             },
 
             {
-                name: "Dashboard",
-                description: "Dashboard endpoints",
-            },
-
-            {
                 name: "Campaigns",
                 description: "Campaign endpoints",
             },

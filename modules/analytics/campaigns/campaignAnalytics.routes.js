@@ -3,7 +3,7 @@ const router = express.Router()
 const { campaignAnalytics } = require("../analytics.controller")
 
 
-// router.get("/:campaignId", campaignAnalytics)
+router.get("/:campaignId", campaignAnalytics)
 
 
 
