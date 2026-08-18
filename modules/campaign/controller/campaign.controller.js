@@ -8,7 +8,7 @@ const campaignPerks = require("../model/campaignPerks.model")
 const Tiers = require("../../tier/tier.model")
 const generateTag = require("../../tags/tag.model")
 const throwError = require("../../../shared/utils/throwError")
-const { createCampaignPerks } = require("../services/campaign.services");
+const { createCampaignService, createCampaignPageService, createCampaignPerks } = require("../services/campaign.services");
 
 
 // Validators
@@ -41,51 +41,7 @@ const createCampaign = asyncHandler(async (req, res) => {
             status,
         } = req.body;
 
-        // campaign Name must be unique
-        const isCampaignExist = await Campaigns.findOne({ campaignName }).session(session)
-        if (isCampaignExist) {
-            const error = new Error(`"${campaignName}" is not available, name already used.`);
-            error.statusCode = 400;
-            throw error;
-        }
-
-        // validate uploaded file
-        if (!mediaUrl && (["audio", "video", "image", "document"].includes(mediaType) && !req.file)) {
-            const error = new Error("Media file is missing");
-            error.statusCode = 400;
-            throw error;
-        }
-
-        // validate perks existence
-        for (let count = 0; count < perks.length; count++) {   // perks = ["perkId1", "perkId2", ...,"perkIdn"]
-            const isPerkExist = await Perks.findOne({ _id: perks[count], artistId: accountId }).session(session)
-            if (!isPerkExist) {
-                const error = new Error(`Perk of Id ${perks[count]} does not exist`)
-                error.statusCode = 400
-                throw error
-            }
-        }
-
-        // upload media to cdn
-        let fileUrl
-        if (mediaType != "link") {
-            fileUrl = ""   //upload to cloudinary
-        }
-
-
-        // create campaign
-        const [newCampaign] = await Campaigns.create([{
-            artistId: accountId,
-            campaignName,
-            startDate,
-            endDate,
-            mediaType,
-            fileUrl: fileUrl || mediaUrl,
-            status
-        }], { session });
-
-        // create campaign perks
-        await createCampaignPerks(perks, newCampaign._id, session)
+        const [campaign, campaignPerks] = await createCampaignService(accountId, campaignName, startDate, endDate, mediaType, status, session)
 
         // commit transaction
         await session.commitTransaction()
@@ -93,7 +49,7 @@ const createCampaign = asyncHandler(async (req, res) => {
         // return response
         res.status(201).json({
             message: "Campaign created successfully",
-            campaign: newCampaign
+            campaign
         });
     }
     catch (error) {
@@ -112,16 +68,7 @@ const createCampaignPage = asyncHandler(async (req, res) => {
     const { campaignId } = req.params
     const { pageStructure } = req.body
 
-    if (!(await Campaigns.findOne({ _id: campaignId, artistId: accountId }))) {
-        const error = new Error("Campaign not found")
-        error.statusCode = 400
-        throw error
-    }
-
-    const campaignPage = await CampaignPages.create({
-        campaignId,
-        pageStructure
-    })
+    const campaignPage = await createCampaignPageService(accountId, campaignId, pageStructure)
 
     return res.status(201).json({
         success: true,

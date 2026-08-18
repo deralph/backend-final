@@ -3,13 +3,18 @@ const asyncHandler = require("express-async-handler")
 const Accounts = require("../../auth/model/account.model")
 const Artists = require("../../artist/artist.model")
 const InternalTeam = require("../../internalTeam/model/internalTeam.model")
+const Tags = require("../../tags/tag.model")
+const Perks = require("../../perks/model/perk.model")
+const PerkCategory = require("../../perks/model/perkCategory.model")
 const Roles = require("../../internalTeam/model/role.model")
+const { createCampaignService } = require("../../campaign/services/campaign.services")
+const { createProductService, assignProductToCampaignServiceMain } = require("../../products/services/product.service")
 
 const ACCOUNT = require("../../../shared/constants/account")
 
 const hashPassword = require("../../../shared/utils/hashPassword")
 
-
+// Done
 const registerStaff = asyncHandler(async (req, res) => {
 
     const session = await mongoose.startSession()
@@ -107,6 +112,7 @@ const dashboard = asyncHandler(async (req, res) => {
 
 })
 
+// Done
 const createCreator = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession()
     try {
@@ -151,7 +157,7 @@ const createCreator = asyncHandler(async (req, res) => {
             firstName,
             middleName,
             lastName,
-        }], {session})
+        }], { session })
 
         if (!artist) {
             const error = new Error("Internal server error occured creating artist")
@@ -187,88 +193,394 @@ const createCreator = asyncHandler(async (req, res) => {
     }
 })
 
+// Done
 const creatorsList = asyncHandler(async (req, res) => {
 
+    const creatorsData = await Artists.aggregate([
+        // Get the artist's account
+        {
+            $lookup: {
+                from: "accounts",
+                localField: "accountId",
+                foreignField: "_id",
+                as: "account"
+            }
+        },
+        {
+            $unwind: "$account"
+        },
+
+        // Get campaigns belonging to this artist
+        {
+            $lookup: {
+                from: "campaigns",
+                let: { artistId: "$_id" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: ["$artistId", "$$artistId"]
+                            }
+                        }
+                    },
+
+                    // Get tags belonging to each campaign
+                    {
+                        $lookup: {
+                            from: "tags",
+                            localField: "_id",
+                            foreignField: "campaignId",
+                            as: "tags"
+                        }
+                    },
+
+                    // Calculate campaign-level analytics
+                    {
+                        $project: {
+                            scanCount: { $ifNull: ["$scanCount", 0] },
+                            tagCount: { $size: "$tags" }
+                        }
+                    }
+                ],
+                as: "campaigns"
+            }
+        },
+
+        // Calculate creator-level values
+        {
+            $project: {
+                _id: 0,
+
+                name: {
+                    $trim: {
+                        input: {
+                            $concat: [
+                                "$firstName",
+                                " ",
+                                { $ifNull: ["$middleName", ""] },
+                                " ",
+                                "$lastName"
+                            ]
+                        }
+                    }
+                },
+
+                email: "$account.email",
+
+                totalCampaign: {
+                    $size: "$campaigns"
+                },
+
+                totalTags: {
+                    $sum: "$campaigns.tagCount"
+                },
+
+                totalScans: {
+                    $sum: "$campaigns.scanCount"
+                },
+
+                accountStatus: "$account.accountStatus"
+            }
+        },
+
+        // Get the summary figures
+        {
+            $facet: {
+                creators: [
+                    {
+                        $project: {
+                            name: 1,
+                            totalCampaign: 1,
+                            totalTags: 1,
+                            totalScans: 1,
+                            email: 1
+                        }
+                    }
+                ],
+
+                totalCreators: [
+                    {
+                        $count: "count"
+                    }
+                ],
+
+                currentlyActive: [
+                    {
+                        $match: {
+                            accountStatus: "active"
+                        }
+                    },
+                    {
+                        $count: "count"
+                    }
+                ]
+            }
+        }
+    ]);
+
+    const result = creatorsData[0];
+
     const data = {
-        totalCreators,
-        currentlyActive,
-        creators:[{ 
-            name,
-            totalCampaign,
-            totalTags,
-            email,
-        }]
-    }
+        totalCreators: result.totalCreators[0]?.count || 0,
+
+        currentlyActive: result.currentlyActive[0]?.count || 0,
+
+        creators: result.creators
+    };
+
+    return res.status(200).json({
+        success: true,
+        message: "Creators retrieved successfully.",
+        data
+    });
+
+
+    // const data = {
+    //     totalCreators,
+    //     currentlyActive,
+    //     creators:[{ 
+    //         name,
+    //         totalCampaign,
+    //         totalTags,
+    //         totalScans,
+    //         email,
+    //     }]
+    // }
 })
 
+// Done
 const fansList = asyncHandler(async (req, res) => {
 
-})
+    const artistId = new mongoose.Types.ObjectId(req.params.artistId);
 
+    const fans = await Tags.aggregate([
+        // Get the campaign attached to each tag
+        {
+            $lookup: {
+                from: "campaigns",
+                localField: "campaignId",
+                foreignField: "_id",
+                as: "campaign"
+            }
+        },
+
+        {
+            $unwind: "$campaign"
+        },
+
+        // Only tags belonging to this artist's campaigns
+        {
+            $match: {
+                "campaign.artistId": artistId,
+                ownerId: { $ne: null }
+            }
+        },
+
+        // One entry per unique fan
+        {
+            $group: {
+                _id: "$ownerId"
+            }
+        },
+
+        // Get the fan details
+        {
+            $lookup: {
+                from: "fans",
+                localField: "_id",
+                foreignField: "_id",
+                as: "fan"
+            }
+        },
+
+        {
+            $unwind: "$fan"
+        },
+
+        // Shape the response
+        {
+            $project: {
+                _id: 0,
+                id: "$fan._id",
+                firstName: "$fan.firstName",
+                lastName: "$fan.lastName",
+                email: "$fan.email",
+                phone: "$fan.phone",
+                status: "$fan.status",
+                consentGiven: "$fan.consentGiven"
+            }
+        },
+
+        {
+            $sort: {
+                firstName: 1
+            }
+        }
+    ]);
+
+    return res.status(200).json({
+        success: true,
+        message: "Fans retrieved successfully.",
+        data: fans
+    });
+});
+
+// Done
 const createPerkCategory = asyncHandler(async (req, res) => {
 
-})
+});
 
-
-// Artist actions by Admin
+// Done . Artist actions by Admin
 const createCampaign = asyncHandler(async (req, res) => {
 
-    const campaign = await createCampaignService(artistId, campaignData)
+    const session = mongoose.session()
 
-    const activity = await logActivityService()
+    try {
+        await session.startTransaction()
+        const { artistId, campaignName, startDate, endDate, mediaType, status } = req.body
 
-    return res.status(201).json({
-        success: true,
-        message: "Artist campaign created",  //to ChatGPT: how would you log a message for an action like this for a mission critical software
-        createdBy: admin,
-        data: { campaign, activityLog }
-    })
+        const [campaign, campaignPerks] = await createCampaignService(artistId, campaignName, startDate, endDate, mediaType, status, session)
 
-})
 
+        // const activity = await logActivityService()
+
+        await session.commitTransaction()
+
+        return res.status(201).json({
+            success: true,
+            message: "Artist campaign created",
+            createdBy: admin,
+            data: { campaign }
+        })
+    }
+    catch (error) {
+        await session.abortTransaction()
+        throw error
+    }
+    finally {
+        await session.endSession()
+    }
+
+});
+
+// Done
 const createProduct = asyncHandler(async (req, res) => {
+    const session = await mongoose.startSession()
+    try {
+        session.startTransaction()
 
-    const product = await createProductService(artistId, productData, variantData)
+        const {
+            artistId,
+            productName,
+            productType, //collect name(as in "t-shirt") not Id
+            productCode, // optional, not required if product type already exist.
+            description,
+            color,
+            size,
+            campaignId,
+            productTier
+        } = req.body;
 
-    const activity = await logActivityService()
+        const [product, campaignProduct, tag, tagLink] = await createProductService(artistId, productName, productType, productCode, description, color, size, campaignId, productTier, session)
 
-    return res.status(201).json({
-        success: true,
-        message: "Artist product created",  //to ChatGPT: how would you log a message for an action like this for a mission critical software
-        createdBy: admin,
-        data: { product, activityLog }
-    })
+        // const activity = await logActivityService()
 
-})
+        await session.commitTransaction()
 
+        return res.status(201).json({
+            success: true,
+            message: "Artist product created",
+            createdBy: admin,
+            data: { product, campaignProduct, tag, tagLink }
+        })
+
+    }
+    catch (error) {
+        await session.abortTransaction()
+        throw error
+    }
+    finally {
+        await session.endSession()
+    }
+
+});
+
+// Done
 const createPerk = asyncHandler(async (req, res) => {
 
-    const perk = await createPerkService(artistId, perkData)
+    const {
+        artistId,
+        perkName,
+        perkCategoryId,
+        contentType,
+        description,
+    } = req.body;
 
-    const activity = await logActivityService()
+    if (!perkName || !perkCategoryId || !contentType) {
+        const error = new Error("Required fields missing");
+        error.statusCode = 400;
+        throw error;
+    }
 
-    return res.status(201).json({
+    // validate perks categoryId
+    const isPerkCategoryValid = await PerkCategory.findById(perkCategoryId)
+    if (!isPerkCategoryValid) {
+        const error = new Error("Perk category does not exist");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const fileUrl = req.file?.path || req.fileUrl || req.body.fileUrl || null;
+    if (!fileUrl) {
+        const error = new Error("No file attached, file is required");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const perk = await Perks.create({
+        artistId,
+        perkName,
+        perkCategoryId,
+        contentType,
+        fileUrl,
+        description,
+    });
+
+    res.status(201).json({
         success: true,
-        message: "Artist perk created",  //to ChatGPT: how would you log a message for an action like this for a mission critical software
-        createdBy: admin,
-        data: { perk, activityLog }
-    })
+        message: "Artist perk created successfully",
+        data: perk,
+    });
+});
 
-})
-
+// Done
 const assignProductToCampaign = asyncHandler(async (req, res) => {
+    const session = await mongoose.startSession()
+    try {
+        session.startTransaction()
+        const { artistId, productId, campaignId, tierId, variantId } = req.body;
 
-    const campaignProduct = await assignProductToCampaignService(artistId, data)
+        const [campaignProduct, tag, tagLink] = await assignProductToCampaignServiceMain(artistId, productId, campaignId, tierId, variantId, session)
 
-    const activity = await logActivityService()
+        // const activity = await logActivityService()
 
-    return res.status(201).json({
-        success: true,
-        message: "Artist product assigned to campaign",  //to ChatGPT: how would you log a message for an action like this for a mission critical software
-        actionBy: admin,
-        data: { campaignProduct, activityLog }
-    })
+        await session.commitTransaction()
 
+        return res.status(201).json({
+            success: true,
+            message: "Artist's product assigned to campaign",  //to ChatGPT: how would you log a message for an action like this for a mission critical software
+            // actionBy: admin,
+            data: { campaignProduct, tag, tagLink }
+        })
+
+    }
+    catch (error) {
+        await session.abortTransaction()
+        throw error
+    }
+    finally {
+        await session.endSession()
+    }
 })
 
 const assignPerkToCampaign = asyncHandler(async (req, res) => {
@@ -298,6 +610,7 @@ module.exports = {
     creatorsList,
     fansList,
     createPerkCategory,
+
 
     // Artist actions by Admin
     createCampaign,

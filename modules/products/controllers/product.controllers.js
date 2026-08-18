@@ -9,7 +9,7 @@ const ProductSizes = require("../models/size.model")
 const CampaignProducts = require("../../campaign/model/campaignProducts.model")
 const Tiers = require("../../tier/tier.model")
 const Campaigns = require("../../campaign/model/campaign.model")
-const { assignProductToCampaignService } = require("../services/product.service")
+const { createProductService, assignProductToCampaignService, assignProductToCampaignServiceMain } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
 const { generateTag } = require("../../tags/tag.services")
 const validateObjectId = require("../../../utils/objectIdValidators")
@@ -35,122 +35,7 @@ const createProduct = asyncHandler(async (req, res) => {
     try {
         session.startTransaction()
 
-        // create product code - TSH-001: productType and productCodeCounter
-        // get product type or create one of does not exist
-        let productTypeDoc
-        productTypeDoc = await ProductTypes.findOne({ type: productType.toLowerCase() }).session(session)
-        if (!productTypeDoc) {
-            if (!productCode) {
-                const error = new Error("product code is required")
-                error.statusCode = 400
-                throw error
-            }
-            [productTypeDoc] = await ProductTypes.create([{ type: productType, code: req.body.productCode }], { session })
-        }
-
-        // no two products in the same product category should have the same name
-        const productAlreadyInProdCategory = await Products.findOne({ productName, productTypeId: productTypeDoc._id })
-        if (productAlreadyInProdCategory) {
-            const error = new Error(`${productName} already exist in "${productTypeDoc.type}" product category`)
-            error.statusCode = 400
-            throw error
-        }
-
-        // create product code counter
-        let productCodeCount
-        productCodeCount = await ProductCodeCounts.findOne({ productType: productTypeDoc._id }).session(session)
-        // if the a counter table does not already exist, then create a new one
-        if (!productCodeCount) {
-            [productCodeCount] = await ProductCodeCounts.create([{ productType: productTypeDoc._id }], { session })  //system default the "nextNumber" field to 1 on newly created doc
-        }
-
-
-        const currentCount = productCodeCount.nextNumber
-
-        // create product code
-        const formattedProductCount = String(currentCount).padStart(3, "0");
-        const fullProductCode = productTypeDoc.code + formattedProductCount  //productType + productCount - TSH001
-
-        // create product
-        const [newProduct] = await Products.create(
-            [{
-                artistId,
-                productName,
-                description,
-                productTypeId: productTypeDoc._id,
-                productCode: fullProductCode
-            }],
-            { session }
-        )
-
-        // update productCount doc
-        await ProductCodeCounts.findByIdAndUpdate(productCodeCount._id, { $inc: { nextNumber: 1 } }, { returnDocument: "after", runValidators: true, session })
-
-
-        // create variant - service 
-        // get colorId
-        let colorDoc
-        const colorCode = generateCode(color)
-        colorDoc = await ProductColors.findOne({ code: colorCode }).session(session)
-        if (!colorDoc) {
-            [colorDoc] = await ProductColors.create([{ name: color, code: colorCode }], { session })
-        }
-        const colorId = colorDoc._id
-
-
-        // get sizeId
-        let sizeDoc
-        const sizeCode = generateCode(size)
-        sizeDoc = await ProductSizes.findOne({ code: sizeCode }).session(session)
-        if (!sizeDoc) {
-            [sizeDoc] = await ProductSizes.create([{ size: size, code: sizeCode }], { session })
-        }
-        const sizeId = sizeDoc._id
-
-        const sku = fullProductCode + "-" + colorCode + "-" + sizeCode
-        const [variant] = await ProductVariants.create([{ productId: newProduct._id, colorId: colorId, sizeId: sizeId, sku }], { session })
-
-
-        // if campaignId, create campaign product and tag - services
-        if (campaignId) {
-            const tier = await Tiers.findOne({ name: productTier })
-            const tierId = tier._id
-
-            const campaignProduct = await assignProductToCampaignService(newProduct._id, campaignId, tierId, session)
-            // update number of product linked to campaign
-            if (campaignProduct) { // update productLinked in campaign
-                const updatedCampaign = await Campaigns.findByIdAndUpdate(
-                    campaignId,
-                    {
-                        $inc: { productsLinked: 1 }
-                    },
-                    { afterDocument: true, runValidators: true, session }
-                )
-
-                if (!updatedCampaign) {
-                    const error = new Error("Error updating campaign")
-                    throw error
-                }
-            }
-
-            // create tag
-            const tag = await generateTag(campaignId, variant._id, tierId, session)
-            // tag link = {baseUrl/nfc/io/tag._id}
-            const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
-
-            await session.commitTransaction()
-
-            return res.status(201).json({
-                success: true,
-                message: "Product created succssfully",
-                data: {
-                    product: newProduct,
-                    campaignProduct,
-                    tag,
-                    tagLink
-                }
-            })
-        }
+        const [product, campaignProduct, tag, tagLink] = await createProductService(artistId, productName, productType, productCode, description, color, size, campaignId, productTier, session)
 
         await session.commitTransaction()
 
@@ -158,8 +43,10 @@ const createProduct = asyncHandler(async (req, res) => {
             success: true,
             message: "Product created succssfully",
             data: {
-                product: newProduct,
-                variant
+                product,
+                campaignProduct,
+                tag,
+                tagLink
             }
         })
     }
@@ -168,7 +55,7 @@ const createProduct = asyncHandler(async (req, res) => {
         throw error
     }
     finally {
-        session.endSession()
+        await session.endSession()
     }
 });
 
@@ -183,51 +70,7 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId
 
         const { campaignId, tierId, variantId } = req.body;
 
-        await validateObjectId(campaignId, Campaigns, "campaign")
-        await validateObjectId(tierId, Tiers, "tier")
-        await validateObjectId(variantId, ProductVariants, "product variant")
-
-        const productVariant = await ProductVariants.findOne({
-            _id: variantId,
-        });
-
-        const product = await Products.findById(productVariant.productId)
-
-        if (!product) {
-            const error = new Error("Product not found");
-            error.statusCode = 404;
-            throw error;
-        }
-
-        const campaignProduct = await CampaignProducts.findOne({ campaignId, product: product._id }).session(session)
-        if (campaignProduct && tierId.toString() !== campaignProduct.tierId.toString()) {
-            const error = new Error("Product already assigned to this campaign with a different tier.");
-            error.statusCode = 400;
-            throw error;
-        }
-
-        const newCampaignProduct = await assignProductToCampaignService(product._id, campaignId, tierId, session)
-        if (newCampaignProduct) { // update productLinked in campaign
-            const updatedCampaign = await Campaigns.findByIdAndUpdate(
-                campaignId,
-                {
-                    $inc: { productsLinked: 1 }
-                },
-                { afterDocument: true, runValidators: true, session }
-            )
-
-            if (!updatedCampaign) {
-                const error = new Error("Error updating campaign")
-                throw error
-            }
-        }
-
-        // create tag
-        const tag = await generateTag(campaignId, productVariant._id, tierId, session)
-        // increament tacgount value in campaign
-        await Campaigns.findByIdAndUpdate(campaignId, { $inc: { tagCount: 1 } }, { session })
-        // tag link = {baseUrl/nfc/io/tag._id}
-        const tagLink = process.env.FRONTEND_BASE_URL + "/nfc/io/" + tag._id
+        const [campaignProduct, tag, tagLink] = await assignProductToCampaignServiceMain(artistId, productId, campaignId, tierId, variantId, session)
 
 
         await session.commitTransaction()
@@ -235,7 +78,7 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId
         res.status(200).json({
             success: true,
             message: "Product assigned to campaign successfully",
-            data: { campaignProduct: newCampaignProduct, tag, tagLink }
+            data: { campaignProduct, tag, tagLink }
         });
 
     }
@@ -342,8 +185,6 @@ const getCampaignProduct = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId
 
     const { productId, campaignId } = req.params
-
-    console.log({ productId, campaignId })
 
     await validateObjectId(productId, Products, "product")
     await validateObjectId(campaignId, Campaigns, "campaign")
