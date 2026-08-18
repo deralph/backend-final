@@ -74,3 +74,15 @@ type   nextNumber
 
 TSH    4
 HDY    3
+
+
+Admin operations on Artist account;
+Admin operation on artist account has been designed to be such that,
+there will be seperate endpoints for the write operations to be performed
+on an artist's account and that will be an admin endpoint seperate from
+an artist would use in performing the same action. Every action performed
+is logged to view who perform which action.
+Developer Infomation:
+While the endpoints are seperated, the core business logic for the operation
+are seperated in into a service file which will be called upon when such
+is needed, hence keeping the process the same.

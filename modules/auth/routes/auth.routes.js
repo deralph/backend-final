@@ -1,8 +1,8 @@
 const express = require("express")
 const router = express.Router()
 const auth = require("../../../middleware/auth.middleware")
-const { registerArtist, login, createRole, registerInternalTeam, profile, logout, requestPasswordReset } = require("../controllers/auth.controller")
-const  validate  = require("../../../middleware/validate")
+const { registerArtist, login, createRole, getRoles, registerInternalTeam, profile, logout, requestPasswordReset } = require("../controllers/auth.controller")
+const validate = require("../../../middleware/validate")
 const { forgotPasswordSchema } = require("../../../validators/forgotPasswordSchema.validator")
 
 /**
@@ -150,6 +150,118 @@ router.post("/register-internal-team", auth, registerInternalTeam)
 
 //create role
 router.post("/create-role", auth, createRole)
+
+/**
+ * @swagger
+ * /auth/get-roles:
+ *   get:
+ *     summary: Retrieve roles
+ *     description: Retrieves a paginated list of roles with optional search and status filters.
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number.
+ *
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 20
+ *         description: Number of roles to return per page.
+ *
+ *       - in: query
+ *         name: search
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Search roles by role name.
+ *
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: active
+ *         description: Filter roles by status.
+ *
+ *     responses:
+ *       200:
+ *         description: Roles retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Roles retrieved successfully.
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         example: 68a123456789abcdef123456
+ *                       role:
+ *                         type: string
+ *                         example: Administrator
+ *                       status:
+ *                         type: string
+ *                         example: active
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2026-08-17T08:30:00.000Z
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2026-08-17T08:30:00.000Z
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 45
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 20
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
+ *                     hasNextPage:
+ *                       type: boolean
+ *                       example: true
+ *                     hasPreviousPage:
+ *                       type: boolean
+ *                       example: false
+ *
+ *       401:
+ *         description: Unauthorized. Authentication is required.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+//get roles
+router.get("/get-roles", auth, getRoles)
 
 
 /**

@@ -11,6 +11,8 @@ const comparePassword = require("../../../shared/utils/comparePassword")
 const getAccount = require("../../../shared/getAccount")
 const ACCOUNT = require("../../../shared/constants/account")
 const { sendEmail } = require("../../../utils/sendEmail");
+const validateObjectId = require("../../../utils/objectIdValidators");
+
 
 
 const registerArtist = asyncHandler(async (req, res) => {
@@ -25,7 +27,7 @@ const registerArtist = asyncHandler(async (req, res) => {
         throw error
     }
 
-    const isEmailExist = await Accounts.findOne({ email, accountType: ACCOUNT.TYPE.ARTIST })
+    const isEmailExist = await Accounts.findOne({ email})
 
     if (isEmailExist) {
         const error = new Error("Email already registered with another account")
@@ -33,7 +35,7 @@ const registerArtist = asyncHandler(async (req, res) => {
         throw error
     }
 
-    const isPhoneExist = await Artists.findOne({ phone })
+    const isPhoneExist = await Accounts.findOne({ phone })
     if (isPhoneExist) {
         const error = new Error("Phone number already registered with another account")
         error.statusCode = 400
@@ -102,7 +104,6 @@ const registerArtist = asyncHandler(async (req, res) => {
 
 })
 
-
 const createRole = asyncHandler(async (req, res) => {
 
     const name = req.body.name?.trim().toLowerCase();
@@ -139,6 +140,52 @@ const createRole = asyncHandler(async (req, res) => {
     })
 })
 
+const getRoles = asyncHandler(async (req, res) => {
+    const accountId = req.user.accountId
+    await validateObjectId(accountId, Accounts, "Admin")
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const { search, status } = req.query;
+
+    const filter = {};
+
+    if (search) {
+        filter.role = {
+            $regex: search,
+            $options: "i"
+        };
+    }
+
+    if (status) {
+        filter.status = status;
+    }
+
+    const [roles, total] = await Promise.all([
+        Roles.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+
+        Roles.countDocuments(filter)
+    ]);
+
+    return res.status(200).json({
+        success: true,
+        message: "Roles retrieved successfully.",
+        data: roles,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            hasNextPage: page < Math.ceil(total / limit),
+            hasPreviousPage: page > 1
+        }
+    });
+})
 
 const registerInternalTeam = asyncHandler(async (req, res) => {
 
@@ -200,7 +247,6 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
     // hash password
     const hashedPassword = await hashPassword(password)
 
-
     // register
     const newAccount = await Accounts.create({
         email,
@@ -246,7 +292,6 @@ const registerInternalTeam = asyncHandler(async (req, res) => {
     })
 
 })
-
 
 const login = asyncHandler(async (req, res) => {
 
@@ -325,7 +370,6 @@ const login = asyncHandler(async (req, res) => {
 
 })
 
-
 const profile = asyncHandler(async (req, res) => {
 
     const accountId = req.user.accountId
@@ -361,7 +405,6 @@ const profile = asyncHandler(async (req, res) => {
 
 })
 
-
 const logout = asyncHandler(async (req, res) => {
 
     // 1. Extract refreshToken or accessToken from request headers or body.
@@ -393,9 +436,6 @@ const logout = asyncHandler(async (req, res) => {
     return res.status(200).json({ message: 'Logged out successfully', success: true })
 
 })
-
-
-
 
 const requestPasswordReset = asyncHandler(async (req, res) => {
     const { email } = req.body;
@@ -460,4 +500,4 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
 
 
 
-module.exports = { registerArtist, createRole, registerInternalTeam, login, profile, logout, requestPasswordReset }
+module.exports = { registerArtist, createRole, getRoles, registerInternalTeam, login, profile, logout, requestPasswordReset }

@@ -250,6 +250,34 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {   //variantId
 });
 
 
+// const getProducts = asyncHandler(async (req, res) => {
+
+//     const artistId = req.user.accountId
+//     const page = Number(req.query.page) || 1;
+//     const limit = Number(req.query.limit) || 20;
+//     const skip = (page - 1) * limit;
+
+//     const [products, total] = await Promise.all([
+//         Products.find({ artistId })
+//             .sort({ createdAt: -1 })
+//             .skip(skip)
+//             .limit(limit),
+//         Products.countDocuments(),
+//     ]);
+
+//     res.status(200).json({
+//         success: true,
+//         data: products,
+//         pagination: {
+//             total,
+//             page,
+//             limit,
+//             totalPages: Math.ceil(total / limit),
+//         },
+//     });
+// });
+
+
 const getProducts = asyncHandler(async (req, res) => {
 
     const artistId = req.user.accountId
@@ -257,13 +285,82 @@ const getProducts = asyncHandler(async (req, res) => {
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [products, total] = await Promise.all([
-        Products.find({ artistId })
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Products.countDocuments(),
-    ]);
+    // const [products, total] = await Promise.all([
+    //     Products.find({ artistId })
+    //         .populate("productTypeId")
+    //         .sort({ createdAt: -1 })
+    //         .skip(skip)
+    //         .limit(limit),
+    //     Products.countDocuments(),
+    // ]);
+
+    const result = await ProductVariants.aggregate([
+        {
+            $lookup: {
+                from: "products",
+                localField: "productId",
+                foreignField: "_id",
+                as: "product"
+            }
+        },
+        { $unwind: "$product" },
+
+        {
+            $lookup: {
+                from: "colors",
+                localField: "colorId",
+                foreignField: "_id",
+                as: "color"
+            }
+        },
+        {
+            $set: {
+                colorId: {
+                    $arrayElemAt: ["$color.name", 0]
+                }
+            }
+        },
+        {
+            $unset: "color"
+        },
+
+        {
+            $lookup: {
+                from: "sizes",
+                localField: "sizeId",
+                foreignField: "_id",
+                as: "size"
+            }
+        },
+        {
+            $set: {
+                sizeId: {
+                    $arrayElemAt: ["$size.size", 0]
+                }
+            }
+        },
+        {
+            $unset: "size"
+        },
+
+        {
+            $match: { "product.artistId": new mongoose.Types.ObjectId(artistId) }
+        },
+        {
+            $facet: {
+                data: [
+                    { $skip: skip },
+                    { $limit: limit }
+                ],
+                total: [
+                    { $count: "count" }
+                ]
+            }
+        }
+    ])
+    const products = result[0].data;
+    const total = result[0].total[0]?.count || 0;
+
 
     res.status(200).json({
         success: true,

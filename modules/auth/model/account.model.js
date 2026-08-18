@@ -4,7 +4,7 @@ const ACCOUNT = require("../../../shared/constants/account")
 const accountSchema = new mongoose.Schema(
     {
         email: { type: String, required: true, unique: true },
-        phone: { type: Number, required: true, unique: true },
+        phone: { type: String, required: true, unique: true },
         userName: { type: String, unique: true },
         password: { type: String, required: true, select: false },
         accountType: { type: String, required: true, enum: [ACCOUNT.TYPE.ARTIST, ACCOUNT.TYPE.INTERNAL_TEAM, ACCOUNT.TYPE.FAN] },
