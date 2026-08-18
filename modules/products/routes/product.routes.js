@@ -2,7 +2,7 @@
 const express = require("express")
 const router = express.Router()
 const auth = require("../../../middleware/auth.middleware")
-const { createProduct, assignProductToCampaign, getProducts, updateProduct, deleteProduct } = require("../controllers/product.controllers")
+const { createProduct, assignProductToCampaign, getProducts, getCampaignProduct, updateProduct, deleteProduct } = require("../controllers/product.controllers")
 const { createProductSchema } = require("../../../validators/product.validator")
 const validate = require("../../../middleware/validate")
 
@@ -293,6 +293,53 @@ router.get("/", auth, getProducts)
  */
 // update product
 router.patch("/:productId", auth, updateProduct)
+
+/**
+ * @swagger
+ * /campaign-products/{productId}:
+ *   get:
+ *     summary: Get a campaign product
+ *     tags:
+ *       - Products
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Product ObjectId
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - campaignId
+ *             properties:
+ *               campaignId:
+ *                 type: string
+ *                 description: Campaign ObjectId
+ *     responses:
+ *       200:
+ *         description: Campaign product retrieved successfully
+ *       400:
+ *         description: |
+ *           Possible errors:
+ *           - Required fields missing
+ *           - Invalid campaign
+ *           - Product not found in campaign
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign product not found
+ *       500:
+ *         description: Internal server error occurred retrieving campaign product
+ */
+// get campaign product
+router.get("/campaign-products/:productId", auth, getCampaignProduct)
 
 
 /**
