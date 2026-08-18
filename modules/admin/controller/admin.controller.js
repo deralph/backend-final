@@ -437,7 +437,8 @@ const createCampaign = asyncHandler(async (req, res) => {
 
     try {
         await session.startTransaction()
-        const { artistId, campaignName, startDate, endDate, mediaType, status } = req.body
+        const { artistId } = req.params
+        const { campaignName, startDate, endDate, mediaType, status } = req.body
 
         const [campaign, campaignPerks] = await createCampaignService(artistId, campaignName, startDate, endDate, mediaType, status, session)
 
