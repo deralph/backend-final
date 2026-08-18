@@ -341,8 +341,12 @@ const getProducts = asyncHandler(async (req, res) => {
 const getCampaignProduct = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId
 
-    const { productId } = req.params
-    const { campaignId } = req.body
+    const { productId, campaignId } = req.params
+
+    console.log({ productId, campaignId })
+
+    await validateObjectId(productId, Products, "product")
+    await validateObjectId(campaignId, Campaigns, "campaign")
 
     const campaignProduct = await CampaignProducts.findOne({ campaignId, product: productId }).populate("tierId")
 

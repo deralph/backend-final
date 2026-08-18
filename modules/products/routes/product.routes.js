@@ -296,7 +296,7 @@ router.patch("/:productId", auth, updateProduct)
 
 /**
  * @swagger
- * /campaign-products/{productId}:
+ * /products/campaign-products/{productId}/{campaignId}:
  *   get:
  *     summary: Get a campaign product
  *     tags:
@@ -310,18 +310,12 @@ router.patch("/:productId", auth, updateProduct)
  *         schema:
  *           type: string
  *         description: Product ObjectId
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - campaignId
- *             properties:
- *               campaignId:
- *                 type: string
- *                 description: Campaign ObjectId
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Campaign ObjectId
  *     responses:
  *       200:
  *         description: Campaign product retrieved successfully
@@ -339,7 +333,7 @@ router.patch("/:productId", auth, updateProduct)
  *         description: Internal server error occurred retrieving campaign product
  */
 // get campaign product
-router.get("/campaign-products/:productId", auth, getCampaignProduct)
+router.get("/campaign-products/:productId/:campaignId", auth, getCampaignProduct)
 
 
 /**
