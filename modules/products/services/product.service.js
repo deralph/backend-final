@@ -1,5 +1,6 @@
 const Products = require("../models/product.model")
 const ProductVariants = require("../models/productVariant.model")
+const ProductSizes = require("../models/size.model")
 const ProductTypes = require("../models/productType.model")
 const ProductCodeCounts = require("../models/productCodeCounts.model")
 const ProductColors = require("../models/color.model")
@@ -42,7 +43,6 @@ const createProductService = async (artistId, productName, productType, productC
         [productCodeCount] = await ProductCodeCounts.create([{ productType: productTypeDoc._id }], { session })  //system default the "nextNumber" field to 1 on newly created doc
     }
 
-
     const currentCount = productCodeCount.nextNumber
 
     // create product code
@@ -60,6 +60,7 @@ const createProductService = async (artistId, productName, productType, productC
         }],
         { session }
     )
+
 
     // update productCount doc
     await ProductCodeCounts.findByIdAndUpdate(productCodeCount._id, { $inc: { nextNumber: 1 } }, { returnDocument: "after", runValidators: true, session })
@@ -88,7 +89,6 @@ const createProductService = async (artistId, productName, productType, productC
     const sku = fullProductCode + "-" + colorCode + "-" + sizeCode
     const [variant] = await ProductVariants.create([{ productId: newProduct._id, colorId: colorId, sizeId: sizeId, sku }], { session })
 
-
     // if campaignId, create campaign product and tag - services
     if (campaignId) {
         const tier = await Tiers.findOne({ name: productTier })
@@ -111,6 +111,7 @@ const createProductService = async (artistId, productName, productType, productC
             }
         }
 
+
         // create tag
         const tag = await generateTag(campaignId, variant._id, tierId, session)
         // tag link = {baseUrl/nfc/io/tag._id}
@@ -118,6 +119,8 @@ const createProductService = async (artistId, productName, productType, productC
 
         return [newProduct, campaignProduct, tag, tagLink]
     }
+
+    return [newProduct]
 }
 
 //create product variant
