@@ -427,7 +427,25 @@ const fansList = asyncHandler(async (req, res) => {
 
 // Done
 const createPerkCategory = asyncHandler(async (req, res) => {
+    const { name, description, avatar } = req.body
 
+    if (!name || !description || !avatar) {
+        const error = new Error("Required fields missing")
+        error.statusCode = 400
+        throw error
+    }
+
+    const category = await PerkCategory.create({
+        name,
+        description,
+        avatar,
+    })
+
+    res.status(201).json({
+        success: true,
+        message: "Category created successfully",
+        data: category,
+    })
 });
 
 // Done . Artist actions by Admin
@@ -554,6 +572,15 @@ const createPerk = asyncHandler(async (req, res) => {
     });
 });
 
+const getPerksCategories = asyncHandler(async (req, res) => {
+    const perkCategories = await PerkCategory.find().sort({ name: 1 });
+
+    res.status(200).json({
+        success: true,
+        data: perkCategories,
+    });
+})
+
 // Done
 const assignProductToCampaign = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession()
@@ -611,6 +638,7 @@ module.exports = {
     creatorsList,
     fansList,
     createPerkCategory,
+    getPerksCategories,
 
 
     // Artist actions by Admin

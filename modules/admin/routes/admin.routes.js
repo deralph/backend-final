@@ -7,6 +7,7 @@ const {
     creatorsList,
     fansList,
     createPerkCategory,
+    getPerksCategories,
 
     createCampaign,
     createProduct,
@@ -281,7 +282,70 @@ router.get("/creators", auth, creatorsList)
  */
 router.get("/fans/:artistId", auth, fansList)
 
+/**
+ * @swagger
+ * /admin/create-perk-category:
+ *   post:
+ *     summary: Create perk category
+ *     description: Create a new perk category.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - description
+ *               - avatar
+ * 
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Premium Access
+ * 
+ *               description:
+ *                 type: string
+ *                 example: Access to exclusive premium features and rewards
+ * 
+ *               avatar:
+ *                 type: string
+ *                 example: https://example.com/images/premium-access.png
+ * 
+ *     responses:
+ *       201:
+ *         description: Category created successfully
+ * 
+ *       400:
+ *         description: Required fields missing
+ * 
+ *       500:
+ *         description: Internal server error
+ */
 router.post("/create-perk-category", auth, createPerkCategory)
+
+/**
+ * @swagger
+ * /admin/get-perks-categories:
+ *   get:
+ *     summary: Get all perk categories
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perk categories retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error occurred retrieving perk categories
+ */
+router.get("/get-perks-categories", getPerksCategories)
 
 
 // on artist account
