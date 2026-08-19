@@ -19,7 +19,7 @@ const auth = require("../../../middleware/auth.middleware")
 
 /**
  * @swagger
- * /admin/perks/categories:
+ * /internal/perks/categories:
  *   post:
  *     summary: Create perk category
  *     description: Create a new perk category.
@@ -66,7 +66,7 @@ router.post("/perks/categories", auth, createCategory);
 
 /**
  * @swagger
- * /admin/perks/categories:
+ * /internal/perks/categories:
  *   get:
  *     summary: Get all perk categories
  *     tags:
