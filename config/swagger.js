@@ -46,6 +46,11 @@ const options = {
             },
 
             {
+                name: "Tiers",
+                description: "Tier endpoints",
+            },
+
+            {
                 name: "Tags",
                 description: "Tags endpoints",
             },
@@ -55,7 +60,7 @@ const options = {
                 description: "Taps endpoints",
             },
 
-              {
+            {
                 name: "Activity Logs",
                 description: "Activity logs endpoints",
             },

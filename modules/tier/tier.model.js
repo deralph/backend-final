@@ -7,6 +7,11 @@ const TierSchema = new mongoose.Schema({
         trim: true,
         unique: true
     },
+    alias:{
+        type: String,
+        trim: true,
+        lowercase: true
+    },
     description: {
         type: String,
         default: '',
