@@ -1,4 +1,5 @@
 const Tags = require("./tag.model")
+const Campaigns = require("../campaign/model/campaign.model")
 const asyncHandler = require("express-async-handler")
 
 
@@ -15,7 +16,7 @@ const getTags = asyncHandler(async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
-        Tags.countDocuments(),
+        Tags.countDocuments({ artistId }),
     ]);
 
     res.status(200).json({
@@ -35,6 +36,11 @@ const getCampaignTags = asyncHandler(async (req, res) => {
 
     const artistId = req.user.accountId
     const { campaignId } = req.params
+    // verify campaign
+    const isCampaignValid = await Campaigns.findOne({ _id: campaignId, artistId })
+    if (!isCampaignValid) {
+        return res.status(400).send("Campaign not found for artist")
+    }
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
@@ -44,7 +50,7 @@ const getCampaignTags = asyncHandler(async (req, res) => {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
-        Tags.countDocuments(),
+        Tags.countDocuments({ campaignId }),
     ]);
 
     res.status(200).json({
