@@ -61,10 +61,8 @@ const validate = require("../../../middleware/validate")
  *       500:
  *         description: Internal server error occurred creating product
  */
-
 // create product
 router.post("/", auth, validate(createProductSchema), createProduct)
-
 
 /**
  * @swagger
@@ -237,7 +235,6 @@ router.post("/:productId/assign-to-campaign", auth, assignProductToCampaign)
 // get products
 router.get("/", auth, getProducts)
 
-
 /**
  * @swagger
  * /products/{productId}:
@@ -334,7 +331,6 @@ router.patch("/:productId", auth, updateProduct)
  */
 // get campaign product
 router.get("/campaign-products/:productId/:campaignId", auth, getCampaignProduct)
-
 
 /**
  * @swagger

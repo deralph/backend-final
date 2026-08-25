@@ -3,12 +3,12 @@ const jwt = require("jsonwebtoken");
 const verifyToken = (req, res, next) => {
     const ownerToken = req.body?.ownerToken ?? req.query?.ownerToken;
 
-    if (!token) {
+    if (!ownerToken) {
         return next();
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(ownerToken, process.env.JWT_SECRET);
         req.owner = decoded;
         return next();
     }

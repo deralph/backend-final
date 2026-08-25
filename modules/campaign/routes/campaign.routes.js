@@ -3,7 +3,9 @@ const router = express.Router();
 const { createCampaign, createCampaignPage, getCampaigns } = require('../controller/campaign.controller');
 const auth = require("../../../middleware/auth.middleware")
 const validate = require("../../../middleware/validate")
+const upload = require("../../../middleware/upload.middleware")
 const { createCampaignSchema } = require("../../../validators/campaign.validator")
+
 
 
 /**
@@ -18,7 +20,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
@@ -61,10 +63,15 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *                   - link
  *                 example: "image"
  *
+ *               media:
+ *                 type: string
+ *                 format: binary
+ *                 description: Campaign media file to upload.
+ *
  *               mediaUrl:
  *                 type: string
- *                 description: URL of the uploaded campaign media.
- *                 example: "https://cdn.intelimerch.com/campaigns/banner.jpg"
+ *                 description: URL of the campaign media when mediaType is link.
+ *                 example: "https://example.com/campaign"
  *
  *               status:
  *                 type: string
@@ -92,9 +99,8 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *       500:
  *         description: Internal server error occurred while creating the campaign.
  */
-
 // create campaign
-router.post("/", auth, validate(createCampaignSchema), createCampaign)
+router.post("/", auth, validate(createCampaignSchema), upload.single("media"), createCampaign)
 
 
 /**

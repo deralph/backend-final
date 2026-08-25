@@ -1,6 +1,13 @@
+const mongoose = require("mongoose")
 const asyncHandler = require("express-async-handler");
 const Perks = require("../model/perk.model");
 const PerkCategory = require("../model/perkCategory.model")
+const Campaigns = require("../../campaign/model/campaign.model")
+const CampaignPerks = require("../../campaign/model/campaignPerks.model")
+const { getPerksService, assignPerkToCampaignService } = require("../services/perks.service")
+const validateObjectId = require("../../../utils/objectIdValidators")
+
+
 
 const createPerk = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId;
@@ -20,14 +27,14 @@ const createPerk = asyncHandler(async (req, res) => {
 
     // validate perks categoryId
     const isPerkCategoryValid = await PerkCategory.findById(perkCategoryId)
-    if(!isPerkCategoryValid){
- const error = new Error("Perk category does not exist");
+    if (!isPerkCategoryValid) {
+        const error = new Error("Perk category does not exist");
         error.statusCode = 400;
         throw error;
     }
 
     const fileUrl = req.file?.path || req.fileUrl || req.body.fileUrl || null;
-    if(!fileUrl){
+    if (!fileUrl) {
         const error = new Error("No file attached, file is required");
         error.statusCode = 400;
         throw error;
@@ -56,14 +63,7 @@ const getPerks = asyncHandler(async (req, res) => {
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const [perks, total] = await Promise.all([
-        Perks.find({ artistId })
-            .populate("perkCategoryId", "name")
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-        Perks.countDocuments({ artistId }),
-    ]);
+    const [perks, total] = await getPerksService(artistId, limit, skip)
 
     res.status(200).json({
         success: true,
@@ -76,6 +76,23 @@ const getPerks = asyncHandler(async (req, res) => {
         },
     });
 });
+
+const assignPerkToCampaign = asyncHandler(async (req, res) => {
+
+    const artistId = req.user.accountId;
+    const { perkId } = req.params
+    const { campaignId } = req.body
+
+
+
+    const campaignPerk = await assignPerkToCampaignService(artistId, perkId, campaignId)
+
+    return res.status(200).json({
+        success: true,
+        message: "Perk aasigned to campaign successfully",
+        data: { campaignPerk }
+    })
+})
 
 const updatePerk = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId;
@@ -143,6 +160,7 @@ const deletePerk = asyncHandler(async (req, res) => {
 });
 
 
+
 module.exports = {
-    createPerk, getPerks, updatePerk, deletePerk
+    createPerk, getPerks, assignPerkToCampaign, updatePerk, deletePerk
 };

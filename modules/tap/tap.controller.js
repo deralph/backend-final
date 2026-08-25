@@ -7,7 +7,6 @@ const { createFan } = require("../fan/fan.service")
 const { activateTag } = require("../tags/tag.services")
 const asyncHandler = require("express-async-handler")
 const validateObjectId = require("../../utils/objectIdValidators")
-// const generateJWTWithoutToken = require("../../utils/JWTWithoutToken")
 const { tapTag } = require("../tap/tap.service")
 const generateJWT = require("../../shared/utils/JWT")
 
@@ -26,7 +25,7 @@ const tap = asyncHandler(async (req, res) => {
     const isNFCActivated = NFCTag.status == "activated"
 
     // is user owner of NFC tag in action 
-    const isOwnerValid = owner && (await Tags.findOne({ _id: tagId, ownerId: owner.id }))  //ownerToken - _id from Fan's model or owner from tag model
+    const isOwnerValid = owner && (NFCTag.ownerId == owner.id)  //ownerToken - _id from Fan's model or owner from tag model
 
     // if NFC is activated and owner's token is valid, subsequent tap - grant access to campaign page
     if (isNFCActivated && isOwnerValid) {  //synonymous to Login
@@ -75,7 +74,6 @@ const tap = asyncHandler(async (req, res) => {
         })
     }
 
-
     // if NFC is activated and owner's token is not valid, reject - strange access
     if (isNFCActivated && !isOwnerValid) {
         await tapTag(tagId, owner?.id, true, req.body.deviceType, "illegal", req.body.location)
@@ -117,10 +115,13 @@ const activateMerch = asyncHandler(async (req, res) => {
 
             const { firstName, lastName, email, phone, deviceType, location, consentGiven } = req.body;
 
-            // if not owner register fan
+            // if not owner, register fan
             let fan
             if (!owner) {
                 fan = await createFan(firstName, lastName, email, phone, consentGiven, session)
+            }
+            else if (owner) {
+                fan = await Fans.findById(owner.id)
             }
 
             // activate tag
@@ -199,7 +200,7 @@ const getCampaignPageResource = asyncHandler(async (req, res) => {
     const { resourceId } = req.params  //resourceId = campaignPerk _id
     await validateObjectId(resourceId, CampaignPerks, "resource")
 
-    const campaignPageResource = await CampaignPerks.findById(resourceId)
+    const campaignPageResource = await CampaignPerks.findById(resourceId).populate("perkId")
 
     return res.status(200).json({
         success: true,

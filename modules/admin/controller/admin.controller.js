@@ -3,16 +3,17 @@ const asyncHandler = require("express-async-handler")
 const Accounts = require("../../auth/model/account.model")
 const Artists = require("../../artist/artist.model")
 const InternalTeam = require("../../internalTeam/model/internalTeam.model")
+const Campaigns = require("../../campaign/model/campaign.model")
 const Tags = require("../../tags/tag.model")
 const Perks = require("../../perks/model/perk.model")
 const PerkCategory = require("../../perks/model/perkCategory.model")
 const Roles = require("../../internalTeam/model/role.model")
-const { createCampaignService } = require("../../campaign/services/campaign.services")
-const { createProductService, assignProductToCampaignServiceMain } = require("../../products/services/product.service")
-
+const { createCampaignService, createCampaignPageService, getArtistCampaignsService } = require("../../campaign/services/campaign.services")
+const { createProductService, getArtistProductService, assignProductToCampaignServiceMain } = require("../../products/services/product.service")
+const { getPerksService, assignPerkToCampaignService } = require("../../perks/services/perks.service")
 const ACCOUNT = require("../../../shared/constants/account")
-
 const hashPassword = require("../../../shared/utils/hashPassword")
+
 
 // Done
 const registerStaff = asyncHandler(async (req, res) => {
@@ -197,7 +198,7 @@ const createCreator = asyncHandler(async (req, res) => {
 const creatorsList = asyncHandler(async (req, res) => {
 
     const creatorsData = await Artists.aggregate([
-        // Get the artist's account
+        // Get artist account
         {
             $lookup: {
                 from: "accounts",
@@ -206,11 +207,12 @@ const creatorsList = asyncHandler(async (req, res) => {
                 as: "account"
             }
         },
+
         {
             $unwind: "$account"
         },
 
-        // Get campaigns belonging to this artist
+        // Get campaigns belonging to the artist
         {
             $lookup: {
                 from: "campaigns",
@@ -234,22 +236,28 @@ const creatorsList = asyncHandler(async (req, res) => {
                         }
                     },
 
-                    // Calculate campaign-level analytics
+                    // Calculate campaign-level statistics
                     {
                         $project: {
-                            scanCount: { $ifNull: ["$scanCount", 0] },
-                            tagCount: { $size: "$tags" }
+                            scanCount: {
+                                $ifNull: ["$scanCount", 0]
+                            },
+
+                            tagCount: {
+                                $size: "$tags"
+                            }
                         }
                     }
                 ],
+
                 as: "campaigns"
             }
         },
 
-        // Calculate creator-level values
+        // Build creator data
         {
             $project: {
-                _id: 0,
+                _id: 1,
 
                 name: {
                     $trim: {
@@ -257,15 +265,28 @@ const creatorsList = asyncHandler(async (req, res) => {
                             $concat: [
                                 "$firstName",
                                 " ",
-                                { $ifNull: ["$middleName", ""] },
-                                " ",
+                                {
+                                    $ifNull: [
+                                        { $concat: ["$middleName", " "] },
+                                        ""
+                                    ]
+                                },
                                 "$lastName"
                             ]
                         }
                     }
                 },
 
+                handle: {
+                    $concat: [
+                        "@",
+                        "$account.userName"
+                    ]
+                },
+
                 email: "$account.email",
+
+                status: "$account.accountStatus",
 
                 totalCampaign: {
                     $size: "$campaigns"
@@ -277,23 +298,24 @@ const creatorsList = asyncHandler(async (req, res) => {
 
                 totalScans: {
                     $sum: "$campaigns.scanCount"
-                },
-
-                accountStatus: "$account.accountStatus"
+                }
             }
         },
 
-        // Get the summary figures
+        // Summary + creator list
         {
             $facet: {
                 creators: [
                     {
                         $project: {
+                            _id: 1,
                             name: 1,
+                            handle: 1,
                             totalCampaign: 1,
                             totalTags: 1,
                             totalScans: 1,
-                            email: 1
+                            email: 1,
+                            status: 1
                         }
                     }
                 ],
@@ -307,7 +329,7 @@ const creatorsList = asyncHandler(async (req, res) => {
                 currentlyActive: [
                     {
                         $match: {
-                            accountStatus: "active"
+                            status: "active"
                         }
                     },
                     {
@@ -333,20 +355,7 @@ const creatorsList = asyncHandler(async (req, res) => {
         message: "Creators retrieved successfully.",
         data
     });
-
-
-    // const data = {
-    //     totalCreators,
-    //     currentlyActive,
-    //     creators:[{ 
-    //         name,
-    //         totalCampaign,
-    //         totalTags,
-    //         totalScans,
-    //         email,
-    //     }]
-    // }
-})
+});
 
 // Done
 const fansList = asyncHandler(async (req, res) => {
@@ -425,6 +434,15 @@ const fansList = asyncHandler(async (req, res) => {
     });
 });
 
+const getAllCampaigns = asyncHandler(async (req, res) => {
+    const campaigns = await Campaigns.find().populate("artistId")
+    return res.status(200).json({
+        success: true,
+        message: "All campaigns retrieved",
+        data: { campaigns }
+    })
+})
+
 // Done
 const createPerkCategory = asyncHandler(async (req, res) => {
     const { name, description, avatar } = req.body
@@ -482,6 +500,47 @@ const createCampaign = asyncHandler(async (req, res) => {
 
 });
 
+const createCampaignPage = asyncHandler(async (req, res) => {
+    const { artistId, campaignId } = req.params
+    const { pageStructure } = req.body
+
+    const campaignPage = await createCampaignPageService(artistId, campaignId, pageStructure)
+
+    return res.status(201).json({
+        success: true,
+        message: "Campaign page created",
+        data: {
+            campaignPage
+        }
+    })
+})
+
+const getCampaigns = asyncHandler(async (req, res) => {
+    const { artistId } = req.params;
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const { search, status } = req.query;
+
+    const [campaigns, total] = await getArtistCampaignsService(artistId, page, limit, skip, search, status)
+
+    return res.status(200).json({
+        success: true,
+        message: "Campaigns retrieved successfully.",
+        data: campaigns,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            hasNextPage: page < Math.ceil(total / limit),
+            hasPreviousPage: page > 1
+        }
+    });
+})
+
 // Done
 const createProduct = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession()
@@ -523,6 +582,33 @@ const createProduct = asyncHandler(async (req, res) => {
     }
 
 });
+
+// Done
+const getProducts = asyncHandler(async (req, res) => {
+    const { artistId } = req.params
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const result = await getArtistProductService(artistId, limit, skip)
+
+    const products = result[0].data;
+    const total = result[0].total[0]?.count || 0;
+
+
+    res.status(200).json({
+        success: true,
+        data: products,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    });
+
+
+})
 
 // Done
 const createPerk = asyncHandler(async (req, res) => {
@@ -572,6 +658,27 @@ const createPerk = asyncHandler(async (req, res) => {
     });
 });
 
+const getPerks = asyncHandler(async (req, res) => {
+    const { artistId } = req.params
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const [perks, total] = await getPerksService(artistId, limit, skip)
+
+    res.status(200).json({
+        success: true,
+        data: perks,
+        pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    });
+
+})
+
 const getPerksCategories = asyncHandler(async (req, res) => {
     const perkCategories = await PerkCategory.find().sort({ name: 1 });
 
@@ -611,20 +718,23 @@ const assignProductToCampaign = asyncHandler(async (req, res) => {
     }
 })
 
+// Done
 const assignPerkToCampaign = asyncHandler(async (req, res) => {
 
-    const campaignPerk = await assignPerkToCampaignService(artistId, data)
+    const { artistId, perkId } = req.params
+    const { campaignId } = req.body
 
-    const activity = await logActivityService()
 
-    return res.status(201).json({
+    const campaignPerk = await assignPerkToCampaignService(artistId, perkId, campaignId)
+    // activity log
+
+    return res.status(200).json({
         success: true,
-        message: "Artist perk assigned to campaign",  //to ChatGPT: how would you log a message for an action like this for a mission critical software
-        actionBy: admin,
-        data: { campaignPerk, activityLog }
+        message: "Perk aasigned to campaign successfully",
+        data: { campaignPerk }
     })
-
 })
+
 
 
 
@@ -637,14 +747,19 @@ module.exports = {
     createCreator,
     creatorsList,
     fansList,
+    getAllCampaigns,
     createPerkCategory,
     getPerksCategories,
 
 
     // Artist actions by Admin
     createCampaign,
+    createCampaignPage,
+    getCampaigns,
     createProduct,
+    getProducts,
     createPerk,
+    getPerks,
     assignProductToCampaign,
     assignPerkToCampaign
 }

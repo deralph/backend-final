@@ -1,3 +1,4 @@
+const mongoose = require("mongoose")
 const Products = require("../models/product.model")
 const ProductVariants = require("../models/productVariant.model")
 const ProductSizes = require("../models/size.model")
@@ -25,7 +26,7 @@ const createProductService = async (artistId, productName, productType, productC
             error.statusCode = 400
             throw error
         }
-        [productTypeDoc] = await ProductTypes.create([{ type: productType, code: req.body.productCode }], { session })
+        [productTypeDoc] = await ProductTypes.create([{ type: productType, code: productCode }], { session })
     }
 
     // no two products in the same product category should have the same name
@@ -92,6 +93,12 @@ const createProductService = async (artistId, productName, productType, productC
 
     // if campaignId, create campaign product and tag - services
     if (campaignId) {
+        if (!productTier) {
+            const error = new Error("product tier is required")
+            error.statusCode = 400
+            throw error
+        }
+
         const tier = await Tiers.findOne({ name: productTier })
         const tierId = tier._id
 
@@ -124,13 +131,106 @@ const createProductService = async (artistId, productName, productType, productC
     return [newProduct]
 }
 
+async function getArtistProductService(artistId, limit, skip) {
+
+    const result = await ProductVariants.aggregate([
+        {
+            $lookup: {
+                from: "products",
+                localField: "productId",
+                foreignField: "_id",
+                as: "product"
+            }
+        },
+        { $unwind: "$product" },
+
+        {
+            $lookup: {
+                from: "product-types",
+                localField: "product.productTypeId",
+                foreignField: "_id",
+                as: "productType"
+            }
+        },
+        {
+            $set: {
+                "product.productType": {
+                    $arrayElemAt: ["$productType.type", 0]
+                }
+            }
+        },
+        {
+            $unset: "product.productTypeId"
+        },
+        {
+            $unset: "productType"
+        },
+
+        {
+            $lookup: {
+                from: "colors",
+                localField: "colorId",
+                foreignField: "_id",
+                as: "colorData"
+            }
+        },
+        {
+            $set: {
+                color: {
+                    $arrayElemAt: ["$colorData.name", 0]
+                }
+            }
+        },
+        {
+            $unset: ["colorId", "colorData"]
+        },
+
+        {
+            $lookup: {
+                from: "sizes",
+                localField: "sizeId",
+                foreignField: "_id",
+                as: "sizeData"
+            }
+        },
+        {
+            $set: {
+                size: {
+                    $arrayElemAt: ["$sizeData.size", 0]
+                }
+            }
+        },
+        {
+            $unset: ["sizeId", "sizeData"]
+        },
+
+        {
+            $match: { "product.artistId": new mongoose.Types.ObjectId(artistId) }
+        },
+        {
+            $facet: {
+                data: [
+                    { $skip: skip },
+                    { $limit: limit }
+                ],
+                total: [
+                    { $count: "count" }
+                ]
+            }
+        }
+    ])
+
+    return result
+
+}
+
 //create product variant
 const createProductVariant = async (productId, color, size, sku, session) => {
     const [variant] = await ProductVariants.create([{ productId, colorId: color, sizeId: size, sku }], { session })
     return variant
 }
 
-// Assign product to campaign
+// Assign product to campaign - to be called by assignProductToCampaignServiceMain below
 async function assignProductToCampaignService(productId, campaignId, tierId, session) {
     // check if product already exist, do not re-add - skip to tag creation
     const productAlreadyInCampaign = await campaignProducts.findOne({ campaignId: campaignId, product: productId }).session(session)
@@ -141,7 +241,7 @@ async function assignProductToCampaignService(productId, campaignId, tierId, ses
     }
 }
 
-
+// depends on assignProductToCampaignService above
 const assignProductToCampaignServiceMain = async (artistId, productId, campaignId, tierId, variantId, session) => {
 
     await validateObjectId(campaignId, Campaigns, "campaign")
@@ -193,4 +293,6 @@ const assignProductToCampaignServiceMain = async (artistId, productId, campaignI
     return [newCampaignProduct, tag, tagLink]
 }
 
-module.exports = { createProductService, createProductVariant, assignProductToCampaignService, assignProductToCampaignServiceMain }
+
+
+module.exports = { createProductService, getArtistProductService, createProductVariant, assignProductToCampaignService, assignProductToCampaignServiceMain }

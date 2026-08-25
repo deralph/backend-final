@@ -6,12 +6,17 @@ const {
     createCreator,
     creatorsList,
     fansList,
+    getAllCampaigns,
     createPerkCategory,
     getPerksCategories,
 
     createCampaign,
+    createCampaignPage,
+    getCampaigns,
     createProduct,
+    getProducts,
     createPerk,
+    getPerks,
     assignProductToCampaign,
     assignPerkToCampaign
 } = require("../controller/admin.controller")
@@ -19,6 +24,7 @@ const auth = require("../../../middleware/auth.middleware")
 const { registerStaffSchema } = require("../../../validators/internalTeamValidator")
 const { registerArtistSchema } = require("../../../validators/artistValidator")
 const validate = require("../../../middleware/validate")
+const { autheRoles } = require("../../../middleware/authRole.middleware")
 
 // internal operations
 /**
@@ -73,7 +79,7 @@ const validate = require("../../../middleware/validate")
  *       500:
  *         descripton: Something went wrong creating account
  */
-router.post("/register-staff", auth, validate(registerStaffSchema), registerStaff)
+router.post("/register-staff", auth, autheRoles("admin"), validate(registerStaffSchema), registerStaff)
 
 router.get("/staffs", auth, registerStaff)
 
@@ -126,7 +132,7 @@ router.get("/dashboard", auth, dashboard)
  *       500:
  *         descripton: Internal server error occured creating artist
  */
-router.post("/register-creator", auth, validate(registerArtistSchema), createCreator)
+router.post("/register-creator", auth, autheRoles("admin"), validate(registerArtistSchema), createCreator)
 
 /**
  * @swagger
@@ -282,6 +288,8 @@ router.get("/creators", auth, creatorsList)
  */
 router.get("/fans/:artistId", auth, fansList)
 
+router.get("/get-all-campaigns", auth, getAllCampaigns)
+
 /**
  * @swagger
  * /admin/create-perk-category:
@@ -326,7 +334,7 @@ router.get("/fans/:artistId", auth, fansList)
  *       500:
  *         description: Internal server error
  */
-router.post("/create-perk-category", auth, createPerkCategory)
+router.post("/create-perk-category", auth, autheRoles("admin"), createPerkCategory)
 
 /**
  * @swagger
@@ -444,6 +452,10 @@ router.get("/get-perks-categories", getPerksCategories)
  */
 router.post("/:artistId/create-campaign", auth, createCampaign)
 
+router.post("/:artistId/:campaignId/create-campaign-page", auth, createCampaignPage)
+
+router.get("/:artistId/get-campaigns", auth, getCampaigns)
+
 /**
  * @swagger
  * /admin/{artistId}/create-product:
@@ -507,7 +519,9 @@ router.post("/:artistId/create-campaign", auth, createCampaign)
  */
 router.post("/:artistId/create-product", auth, createProduct)
 
-/**
+router.get("/:artistId/get-products", auth, getProducts)
+
+/** 
  * @swagger
  * /admin/{artistId}/create-perk:
  *   post:
@@ -566,6 +580,8 @@ router.post("/:artistId/create-product", auth, createProduct)
  *         description: Internal server error occurred creating perk
  */
 router.post("/:artistId/create-perk", auth, createPerk)
+
+router.get("/:artistId/get-perks", auth, getPerks)
 
 /**
  * @swagger
@@ -690,7 +706,7 @@ router.post("/:artistId/create-perk", auth, createPerk)
  */
 router.post("/:artistId/assign-product-to-campaign", auth, assignProductToCampaign)
 
-router.post("/:artistId/assign-perk-to-campaign", auth, assignPerkToCampaign)
+router.post("/:artistId/:perkId/assign-perk-to-campaign", auth, assignPerkToCampaign)
 
 
 

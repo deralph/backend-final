@@ -27,7 +27,7 @@ const registerArtist = asyncHandler(async (req, res) => {
         throw error
     }
 
-    const isEmailExist = await Accounts.findOne({ email})
+    const isEmailExist = await Accounts.findOne({ email })
 
     if (isEmailExist) {
         const error = new Error("Email already registered with another account")
@@ -337,7 +337,7 @@ const login = asyncHandler(async (req, res) => {
         }
 
         // generate tokens
-        const payload = { accountId: account._id, accountType: account.accountType }
+        const payload = { accountId: account._id, accountType: account.accountType, role: account?.roleId }
         const accessToken = generateJWT(payload, "accessToken")
         const refreshToken = generateJWT(payload, "refreshToken")
 

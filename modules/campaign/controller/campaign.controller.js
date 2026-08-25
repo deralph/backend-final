@@ -8,7 +8,7 @@ const campaignPerks = require("../model/campaignPerks.model")
 const Tiers = require("../../tier/tier.model")
 const generateTag = require("../../tags/tag.model")
 const throwError = require("../../../shared/utils/throwError")
-const { createCampaignService, createCampaignPageService, createCampaignPerks } = require("../services/campaign.services");
+const { createCampaignService, createCampaignPageService, createCampaignPerks, getArtistCampaignsService } = require("../services/campaign.services");
 
 
 // Validators
@@ -41,7 +41,9 @@ const createCampaign = asyncHandler(async (req, res) => {
             status,
         } = req.body;
 
-        const [campaign, campaignPerks] = await createCampaignService(accountId, campaignName, startDate, endDate, mediaType, status, session)
+        const file = req.file
+
+        const [campaign, campaignPerks] = await createCampaignService(accountId, campaignName, startDate, endDate, perks, media, mediaType, mediaUrl, file, status, session)
 
         // commit transaction
         await session.commitTransaction()
@@ -89,29 +91,7 @@ const getCampaigns = asyncHandler(async (req, res) => {
 
     const { search, status } = req.query;
 
-    const filter = {
-        artistId
-    };
-
-    if (search) {
-        filter.campaignName = {
-            $regex: search,
-            $options: "i"
-        };
-    }
-
-    if (status) {
-        filter.status = status;
-    }
-
-    const [campaigns, total] = await Promise.all([
-        Campaigns.find(filter)
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit),
-
-        Campaigns.countDocuments(filter)
-    ]);
+    const [campaigns, total] = await getArtistCampaignsService(artistId, page, limit, skip, search, status)
 
     return res.status(200).json({
         success: true,

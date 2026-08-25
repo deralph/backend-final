@@ -47,6 +47,20 @@ const getCampaignTags = asyncHandler(async (req, res) => {
 
     const [tags, total] = await Promise.all([
         Tags.find({ campaignId })
+            .populate({
+                path: "productVariantId",
+                populate: [
+                    {
+                        path: "productId",
+                        populate: [
+                            { path: "productTypeId", select: "type", }
+                        ]
+                    },
+                    { path: "colorId", select: "name" },
+                    { path: "sizeId", select: "size" }
+                ]
+            })
+            .populate("campaignId")
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),

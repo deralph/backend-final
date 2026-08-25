@@ -9,7 +9,7 @@ const ProductSizes = require("../models/size.model")
 const CampaignProducts = require("../../campaign/model/campaignProducts.model")
 const Tiers = require("../../tier/tier.model")
 const Campaigns = require("../../campaign/model/campaign.model")
-const { createProductService, assignProductToCampaignService, assignProductToCampaignServiceMain } = require("../services/product.service")
+const { createProductService, getArtistProductService, assignProductToCampaignService, assignProductToCampaignServiceMain } = require("../services/product.service")
 const generateCode = require("../../../utils/generateCode")
 const { generateTag } = require("../../tags/tag.services")
 const validateObjectId = require("../../../utils/objectIdValidators")
@@ -100,70 +100,8 @@ const getProducts = asyncHandler(async (req, res) => {
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const result = await ProductVariants.aggregate([
-        {
-            $lookup: {
-                from: "products",
-                localField: "productId",
-                foreignField: "_id",
-                as: "product"
-            }
-        },
-        { $unwind: "$product" },
+    const result = await getArtistProductService(artistId, limit, skip)
 
-        {
-            $lookup: {
-                from: "colors",
-                localField: "colorId",
-                foreignField: "_id",
-                as: "color"
-            }
-        },
-        {
-            $set: {
-                colorId: {
-                    $arrayElemAt: ["$color.name", 0]
-                }
-            }
-        },
-        {
-            $unset: "color"
-        },
-
-        {
-            $lookup: {
-                from: "sizes",
-                localField: "sizeId",
-                foreignField: "_id",
-                as: "size"
-            }
-        },
-        {
-            $set: {
-                sizeId: {
-                    $arrayElemAt: ["$size.size", 0]
-                }
-            }
-        },
-        {
-            $unset: "size"
-        },
-
-        {
-            $match: { "product.artistId": new mongoose.Types.ObjectId(artistId) }
-        },
-        {
-            $facet: {
-                data: [
-                    { $skip: skip },
-                    { $limit: limit }
-                ],
-                total: [
-                    { $count: "count" }
-                ]
-            }
-        }
-    ])
     const products = result[0].data;
     const total = result[0].total[0]?.count || 0;
 

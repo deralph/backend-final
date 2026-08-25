@@ -19,23 +19,6 @@ const createCampaignSchema = Joi.object({
         .items(Joi.string().hex().length(24))
         .default([]),
 
-    // products: Joi.array()    Requirement changed: field eliminated, products are not added to campaign during campaign creation
-    //     .items(
-    //         Joi.object({
-    //             productId: Joi.string()
-    //                 .hex()
-    //                 .length(24)
-    //                 .required(),
-
-    //             tierId: Joi.string()
-    //                 .hex()
-    //                 .length(24)
-    //                 .required(),
-    //         })
-    //     )
-    //     .min(1)
-    //     .required(),
-
     mediaType: Joi.string()
         .valid("audio", "video", "image", "link", "document")
         .allow("", null)

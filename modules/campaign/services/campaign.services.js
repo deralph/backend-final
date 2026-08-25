@@ -3,6 +3,7 @@ const CampaignPerks = require("../model/campaignPerks.model")
 const CampaignProducts = require("../model/campaignProducts.model")
 const CampaignPages = require("../model/campaignPage.model")
 const Perks = require("../../perks/model/perk.model")
+const uploadToCloudinary = require("../../../utils/uploadToCloudinary")
 
 
 async function isCampaignExist(campaignId) {
@@ -13,8 +14,7 @@ async function isCampaignExist(campaignId) {
     return true
 }
 
-
-const createCampaignService = async (accountId, campaignName, startDate, endDate, mediaType, status, session) => {
+const createCampaignService = async (accountId, campaignName, startDate, endDate, perks, media, mediaType, mediaUrl, file, status, session) => {
     // campaign Name must be unique
     const isCampaignExist = await Campaigns.findOne({ campaignName }).session(session)
     if (isCampaignExist) {
@@ -24,7 +24,7 @@ const createCampaignService = async (accountId, campaignName, startDate, endDate
     }
 
     // validate uploaded file
-    if (!mediaUrl && (["audio", "video", "image", "document"].includes(mediaType) && !req.file)) {
+    if (!mediaUrl && (["audio", "video", "image", "document"].includes(mediaType) && !file)) {
         const error = new Error("Media file is missing");
         error.statusCode = 400;
         throw error;
@@ -43,7 +43,9 @@ const createCampaignService = async (accountId, campaignName, startDate, endDate
     // upload media to cdn
     let fileUrl
     if (mediaType != "link") {
-        fileUrl = ""   //upload to cloudinary
+        const uploaded = await uploadToCloudinary(file)
+        fileUrl = uploaded.secure_url   //upload to cloudinary
+        console.log({ uploaded })
     }
 
 
@@ -79,7 +81,6 @@ const createCampaignPageService = async (accountId, campaignId, pageStructure) =
     return campaignPage
 }
 
-
 async function createCampaignPerks(perkIds, campaignId, session) {
 
     // validate if perks already exist in campaign
@@ -106,8 +107,37 @@ async function createCampaignPerks(perkIds, campaignId, session) {
     return campaignPerks
 }
 
+async function getArtistCampaignsService(artistId, page, limit, skip, search, status) {
+    const filter = {
+        artistId
+    };
+
+    if (search) {
+        filter.campaignName = {
+            $regex: search,
+            $options: "i"
+        };
+    }
+
+    if (status) {
+        filter.status = status;
+    }
+
+    const [campaigns, total] = await Promise.all([
+        Campaigns.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+
+        Campaigns.countDocuments(filter)
+    ]);
+
+    return [campaigns, total]
+
+}
 
 
 
 
-module.exports = { createCampaignService, createCampaignPageService, createCampaignPerks }
+
+module.exports = { createCampaignService, createCampaignPageService, createCampaignPerks, getArtistCampaignsService }

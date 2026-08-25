@@ -14,6 +14,7 @@ async function validateObjectId(id, model, DName) {
         error.statusCode = 400;
         throw error;
     }
+    return document
 }
 
 

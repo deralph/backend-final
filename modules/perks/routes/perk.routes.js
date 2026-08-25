@@ -1,13 +1,12 @@
 const express = require("express");
 const router = express.Router();
-
 const {
     createPerk,
     getPerks,
+    assignPerkToCampaign,
     updatePerk,
     deletePerk,
 } = require("../controller/perk.controllers");
-
 const auth = require("../../../middleware/auth.middleware");
 
 
@@ -64,7 +63,6 @@ router.use(auth); // Apply authentication middleware to all routes in this route
  *       500:
  *         description: Internal server error occurred creating perk
  */
-
 router.post("/", createPerk);
 
 /**
@@ -96,6 +94,8 @@ router.post("/", createPerk);
  *         description: Internal server error occurred retrieving perks
  */
 router.get("/", getPerks);
+
+router.post("/:perkId/assign-to-camapign", assignPerkToCampaign)
 
 /**
  * @swagger
