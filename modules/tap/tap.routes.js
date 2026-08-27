@@ -190,15 +190,18 @@ router.post("/:tagId/tap", authOwner, tap)
  *               location:
  *                 type: object
  *                 properties:
- *                   country:
+ *                   latitude:
+ *                     type: int
+ *                     example: 6.514598964220166
+ *                   longitude:
+ *                     type: int
+ *                     example: 3.3832071742326244
+ *                   accuracy:
+ *                     type: int
+ *                     example: 73
+ *                   ip:
  *                     type: string
- *                     example: "Nigeria"
- *                   state:
- *                     type: string
- *                     example: "Lagos"
- *                   city:
- *                     type: string
- *                     example: "Ikeja"
+ *                     example: "102.88.168.238"
  *
  *     responses:
  *       201:
