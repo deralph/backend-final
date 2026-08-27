@@ -44,3 +44,54 @@ app.listen(PORT, () => {
 //     await sendEmail(to, subject, text)
 // }
 // se()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async function getDeviceInfo() {
+    try {
+        // Get IP
+        const ipResponse = await fetch("https://api.ipify.org?format=json");
+        const { ip } = await ipResponse.json();
+
+        // Get latitude & longitude
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                const deviceInfo = {
+                    ip,
+                    latitude,
+                    longitude,
+                    accuracy
+                };
+
+                // send deviceInfo to the backend - include it in your req.body for every single tap
+
+            },
+            (error) => {
+                console.error("Location error:", error.message);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+
+        await getLocation(long, lat)
+
+    } catch (error) {
+        console.error("Error:", error);
+    }
+}

@@ -9,6 +9,7 @@ const asyncHandler = require("express-async-handler")
 const validateObjectId = require("../../utils/objectIdValidators")
 const { tapTag } = require("../tap/tap.service")
 const generateJWT = require("../../shared/utils/JWT")
+const { getLocation } = require("../../shared/services/getLocation.services.js")
 
 
 
@@ -19,6 +20,8 @@ const tap = asyncHandler(async (req, res) => {
 
     const tag = await validateObjectId(tagId, Tags, "tag")
     owner && await validateObjectId(owner.id, Fans, "owner")
+
+    const { suburb, state, country } = await getLocation(req.long, req.lat)
 
     // validate NFC
     const NFCTag = await Tags.findById(tagId)  //_id, tagId
@@ -31,8 +34,7 @@ const tap = asyncHandler(async (req, res) => {
     if (isNFCActivated && isOwnerValid) {  //synonymous to Login
         const tapToken = await generateJWT({ tagId }, "tapToken")
 
-
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, "subsequent", req.body.location)
+        await tapTag(tagId, owner?.id, true, req.body.deviceType, "subsequent", { country, state, city: suburb })
         await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
         await Campaigns.findByIdAndUpdate(
             tag.campaignId,
@@ -55,7 +57,7 @@ const tap = asyncHandler(async (req, res) => {
         // tagModel - tapCount, lastTappedAt
         // campaignModel - tapCount, tagCount, scanCount, claims, conversionRate
 
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, "fresh", req.body.location)
+        await tapTag(tagId, owner?.id, true, req.body.deviceType, "fresh", { country, state, city: suburb })
         await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
         await Campaigns.findByIdAndUpdate(
             tag.campaignId,
@@ -76,7 +78,7 @@ const tap = asyncHandler(async (req, res) => {
 
     // if NFC is activated and owner's token is not valid, reject - strange access
     if (isNFCActivated && !isOwnerValid) {
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, "illegal", req.body.location)
+        await tapTag(tagId, owner?.id, true, req.body.deviceType, "illegal", { country, state, city: suburb })
         await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
         await Campaigns.findByIdAndUpdate(
             tag.campaignId,

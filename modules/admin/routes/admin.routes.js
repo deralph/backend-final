@@ -6,6 +6,7 @@ const {
     createCreator,
     creatorsList,
     fansList,
+    getAllFans,
     getAllCampaigns,
     createPerkCategory,
     getPerksCategories,
@@ -287,6 +288,41 @@ router.get("/creators", auth, creatorsList)
  *         description: Internal server error.
  */
 router.get("/fans/:artistId", auth, fansList)
+
+/**
+ * @swagger
+ * /admin/get-all-fans:
+ *   get:
+ *     summary: Get all fans
+ *     description: Retrieves all accounts with the account type of FANS.
+ *     tags:
+ *       - Admin
+ *     responses:
+ *       200:
+ *         description: All fans retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: All fans retrieved
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     fans:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                       description: List of fan accounts
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/get-all-fans", getAllFans)
 
 router.get("/get-all-campaigns", auth, getAllCampaigns)
 

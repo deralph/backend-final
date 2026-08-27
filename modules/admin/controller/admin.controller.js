@@ -1,6 +1,7 @@
 const mongoose = require("mongoose")
 const asyncHandler = require("express-async-handler")
 const Accounts = require("../../auth/model/account.model")
+const Fans = require("../../fan/fan.model")
 const Artists = require("../../artist/artist.model")
 const InternalTeam = require("../../internalTeam/model/internalTeam.model")
 const Campaigns = require("../../campaign/model/campaign.model")
@@ -434,6 +435,16 @@ const fansList = asyncHandler(async (req, res) => {
     });
 });
 
+const getAllFans = asyncHandler(async (req, res) => {
+    const fans = await Fans.find()
+
+    return res.status(200).json({
+        success: true,
+        message: "All fans retrieved",
+        data: { fans }
+    })
+})
+
 const getAllCampaigns = asyncHandler(async (req, res) => {
     const campaigns = await Campaigns.find().populate("artistId")
     return res.status(200).json({
@@ -747,6 +758,7 @@ module.exports = {
     createCreator,
     creatorsList,
     fansList,
+    getAllFans,
     getAllCampaigns,
     createPerkCategory,
     getPerksCategories,

@@ -85,6 +85,11 @@ const createCampaignPage = asyncHandler(async (req, res) => {
 const getCampaigns = asyncHandler(async (req, res) => {
     const artistId = req.user.accountId;
 
+    const IP = req.ip
+    console.log({ IP })
+    // Getting location via reverse geocoding
+    // https://nominatim.openstreetmap.org/reverse?lat=<value>&lon=<value>&<params>
+
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
