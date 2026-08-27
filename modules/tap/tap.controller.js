@@ -21,7 +21,9 @@ const tap = asyncHandler(async (req, res) => {
     const tag = await validateObjectId(tagId, Tags, "tag")
     owner && await validateObjectId(owner.id, Fans, "owner")
 
-    const { suburb, state, country } = await getLocation(req.long, req.lat)
+    // get location
+    const { latitude, longitude } = location
+    const { suburb, state, country } = await getLocation(latitude, longitude)
 
     // validate NFC
     const NFCTag = await Tags.findById(tagId)  //_id, tagId
@@ -117,6 +119,10 @@ const activateMerch = asyncHandler(async (req, res) => {
 
             const { firstName, lastName, email, phone, deviceType, location, consentGiven } = req.body;
 
+            // get location
+            const { latitude, longitude } = location
+            const { suburb, state, country } = await getLocation(latitude, longitude)
+
             // if not owner, register fan
             let fan
             if (!owner) {
@@ -127,10 +133,10 @@ const activateMerch = asyncHandler(async (req, res) => {
             }
 
             // activate tag
-            const activatedTag = await activateTag(tagId, fan._id, location, deviceType, session)
+            const activatedTag = await activateTag(tagId, fan._id, { country, state, city: suburb }, deviceType, session)
 
             // track tap
-            await tapTag(tagId, fan._id, true, deviceType, location, session)
+            await tapTag(tagId, fan._id, true, deviceType, { country, state, city: suburb }, session)
 
             // update campaign
             await Campaigns.findByIdAndUpdate(
@@ -139,7 +145,7 @@ const activateMerch = asyncHandler(async (req, res) => {
                     $inc: { tagCount: 1 },
                     $inc: { claims: 1 },
                 },
-                { afterDocument: true, runValidators: true }
+                { returnDocument: "after", runValidators: true }
             )
 
 

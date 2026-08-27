@@ -7,7 +7,7 @@ async function tapTag(tagId, ownerId, success, deviceType, location, tapType, se
         success,
         tapType,
         deviceType,
-        location: { country: location.country, state: location.state, city: location.city }
+        location: { country: location.country, state: location.state, city: location.suburb }
     })
     await tap.save({ session })
 }

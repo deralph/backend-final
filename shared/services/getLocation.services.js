@@ -1,5 +1,5 @@
 
-async function getLocation(long, lat) {
+async function getLocation(lat, long) {
     try {
         const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${long}&format=json`

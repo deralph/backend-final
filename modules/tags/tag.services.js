@@ -46,7 +46,7 @@ async function activateTag(tagId, ownerId, location, deviceType, session) {
         ownerId,
         lastTappedAt: new Date(),
         status: "activated",
-        activatingLocation: { country: location.country, state: location.state, city: location.city },
+        activatingLocation: { country: location.country, state: location.state, city: location.suburb },
         activatedAt: new Date(),
         claimedAt: new Date(),
         activatingDevice: deviceType
