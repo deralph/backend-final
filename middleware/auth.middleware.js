@@ -30,7 +30,7 @@ const authenticate = (req, res, next) => {
 
         // Attach payload to request
         req.user = decoded;
-
+        
         next();
 
     }
