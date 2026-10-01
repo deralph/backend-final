@@ -1,14 +1,14 @@
-const Tags = require("../tags/tag.model")
-const campaignProducts = require("../campaign/model/campaignProducts.model")
+const Tags = require("./tag.model")
 const TagCounts = require("./tagCounter.model")
 
-// generate tag
+// ADDED: maps frontend deviceType values to Tag model enum values
+function mapDeviceType(deviceType) {
+    if (deviceType === "android" || deviceType === "ios") return "mobile"
+    if (deviceType === "web") return "desktop"
+    return "unknown"
+}
+
 async function generateTag(campaignId, productVariantId, tierId, session) {
-    // validation of parameters is done in caller program
-
-    // Tags.createIndexes()
-
-    // create tagId
     let tagCount
     tagCount = await TagCounts.findOne().session(session)
     if (!tagCount) {
@@ -18,7 +18,6 @@ async function generateTag(campaignId, productVariantId, tierId, session) {
     count = tagCount.nextNumber
     const tagId = "NFC" + "-" + String(count).padStart(3, "0")
 
-    // collate tag data
     const tagData = {
         tagId,
         campaignId,
@@ -26,7 +25,6 @@ async function generateTag(campaignId, productVariantId, tierId, session) {
         tierId
     }
 
-    // create tag
     const [tag] = await Tags.create([tagData], { session })
     if (!tag) {
         const error = new Error("Error occured creating tag")
@@ -34,10 +32,9 @@ async function generateTag(campaignId, productVariantId, tierId, session) {
         throw error
     }
 
-    // update tag counter logic
     await TagCounts.findOneAndUpdate({ _id: tagCount._id }, { $inc: { nextNumber: 1 } }, { session })
 
-    return tag;
+    return tag
 }
 
 async function activateTag(tagId, ownerId, location, deviceType, session) {
@@ -46,20 +43,22 @@ async function activateTag(tagId, ownerId, location, deviceType, session) {
         ownerId,
         lastTappedAt: new Date(),
         status: "activated",
-        activatingLocation: { country: location.country, state: location.state, city: location.suburb },
+        activatingLocation: {
+            country: location.country || null,
+            state: location.state || null,
+            city: location.suburb || location.city || null
+        },
         activatedAt: new Date(),
         claimedAt: new Date(),
-        activatingDevice: deviceType
+        // FIXED: map android/ios/web → mobile/desktop/unknown to match model enum
+        activatingDevice: mapDeviceType(deviceType)
     }
-
 
     const activatedTag = await Tags.findOneAndUpdate(
         { _id: tagId },
         {
             $set: activationData,
-            $inc: {
-                tapCount: 1
-            }
+            $inc: { tapCount: 1 }
         },
         { returnDocument: "after", runValidators: true, session }
     )
@@ -67,35 +66,24 @@ async function activateTag(tagId, ownerId, location, deviceType, session) {
     return activatedTag
 }
 
-
-// retrieve tag
 async function retrieveTag(tagId) {
-    const tag = await Tag.findById(tagId)
+    const tag = await Tags.findById(tagId)
     if (!tag) {
         const error = new Error("Tag not found")
         error.statusCode = 404
         throw error
     }
-
     return tag
 }
 
-// retrieve tags. Write functions to get tags by: campaign, artist, all tags
-
-
-
-// disable tag
-async function retrieveTag(tagId) {
-    // verification done in caller program
-    const tag = await Tag.findByIdAndUpdate(tagId, { status: "disable" }, { new: true, runValidators: true })
+async function disableTag(tagId) {
+    const tag = await Tags.findByIdAndUpdate(tagId, { status: "disabled" }, { new: true, runValidators: true })
     if (!tag) {
         const error = new Error("Tag not found")
         error.statusCode = 404
         throw error
     }
-
     return tag
 }
 
-
-module.exports = { generateTag, activateTag }
+module.exports = { generateTag, activateTag, retrieveTag, disableTag }

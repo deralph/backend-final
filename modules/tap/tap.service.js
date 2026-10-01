@@ -1,16 +1,33 @@
-const Taps = require("./tap.model")
 
-async function tapTag(tagId, ownerId, success, deviceType, location, tapType, session) {
-    const tap = new Taps({
-        tagId,
-        userId: ownerId,
-        success,
-        tapType,
-        deviceType,
-        location: { country: location.country, state: location.state, city: location.suburb }
-    })
-    await tap.save({ session })
+const Taps = require("./tap.model");
+
+async function tapTag({
+  tagId,
+  ownerId,
+  success,
+  deviceType,
+  tapType,
+  location,
+  artistId,
+  campaignId,
+  session,
+}) {
+  const tap = new Taps({
+    tagId,
+    userId: ownerId || null,
+    success: success || null,
+    tapType,
+    deviceType,
+    artistId,
+    campaignId,
+    location: {
+      country: location?.country || null,
+      state: location?.state || null,
+      city: location?.city || location?.suburb || null,
+    },
+  });
+
+  await tap.save({ session });
 }
 
-
-module.exports = { tapTag }
+module.exports = { tapTag };

@@ -6,8 +6,8 @@ const fanActivationSchema = Joi.object({
         .required(),
 
     ownerToken: Joi.string()
-        .trim()
-        .optional(),
+        .trim(),
+        
 
     firstName: Joi.string()
         .trim()

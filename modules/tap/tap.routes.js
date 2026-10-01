@@ -14,7 +14,7 @@ const { fanActivationSchema } = require("../../validators/fan.validator")
 
 /**
  * @swagger
- * /tags/{tagId}/tap:
+ * /taps/{tagId}/tap:
  *   post:
  *     summary: Process an NFC merchandise tap
  *     description: |
@@ -119,7 +119,7 @@ router.post("/:tagId/tap", authOwner, tap)
 
 /**
  * @swagger
- * /nfc/activate:
+ * /taps/nfc/activate:
  *   post:
  *     summary: Activate NFC merchandise
  *     description: |

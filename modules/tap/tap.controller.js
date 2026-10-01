@@ -1,229 +1,366 @@
-const mongoose = require("mongoose")
-const Tags = require("../tags/tag.model")
-const Fans = require("../fan/fan.model")
-const Campaigns = require("../campaign/model/campaign.model.js")
-const CampaignPerks = require("../campaign/model/campaignPerks.model.js")
-const { createFan } = require("../fan/fan.service")
-const { activateTag } = require("../tags/tag.services")
-const asyncHandler = require("express-async-handler")
-const validateObjectId = require("../../utils/objectIdValidators")
-const { tapTag } = require("../tap/tap.service")
-const generateJWT = require("../../shared/utils/JWT")
-const { getLocation } = require("../../shared/services/getLocation.services.js")
-
-
+// src/modules/tap/tap.controller.js
+const mongoose = require("mongoose");
+const Tags = require("../tags/tag.model");
+const Fans = require("../fan/fan.model");
+const Campaigns = require("../campaign/model/campaign.model.js");
+const CampaignPerks = require("../campaign/model/campaignPerks.model.js");
+const CampaignPages = require("../campaign/model/campaignPage.model");
+const { createFan } = require("../fan/fan.service");
+const { activateTag } = require("../tags/tag.services");
+const asyncHandler = require("express-async-handler");
+const validateObjectId = require("../../utils/objectIdValidators");
+const { tapTag } = require("../tap/tap.service");
+const { generateJWT, generateOwnerToken } = require("../../shared/utils/JWT");
+const { getLocation } = require("../../shared/services/getLocation.services.js");
 
 const tap = asyncHandler(async (req, res) => {
+  const { tagId } = req.params;
+  const { owner } = req;
 
-    const { tagId } = req.params
-    const { owner } = req
+  const tag = await validateObjectId(tagId, Tags, "tag");
 
-    const tag = await validateObjectId(tagId, Tags, "tag")
-    owner && await validateObjectId(owner.id, Fans, "owner")
+  // get location
+  const { location } = req.body;
+  const { country: locCountry, state: locState, city: locCity } = location || {};
 
-    // get location
-    const { latitude, longitude } = location
-    const { suburb, state, country } = await getLocation(latitude, longitude)
+  let locationData = {
+    suburb: locCity || null,
+    state: locState || null,
+    country: locCountry || null,
+  };
 
-    // validate NFC
-    const NFCTag = await Tags.findById(tagId)  //_id, tagId
-    const isNFCActivated = NFCTag.status == "activated"
+  const { suburb, state, country } = locationData;
 
-    // is user owner of NFC tag in action 
-    const isOwnerValid = owner && (NFCTag.ownerId == owner.id)  //ownerToken - _id from Fan's model or owner from tag model
+  const NFCTag = await Tags.findById(tagId);
 
-    // if NFC is activated and owner's token is valid, subsequent tap - grant access to campaign page
-    if (isNFCActivated && isOwnerValid) {  //synonymous to Login
-        const tapToken = await generateJWT({ tagId }, "tapToken")
+  // Check if tag exists
+  if (!NFCTag) {
+    const error = new Error("Tag not found");
+    error.statusCode = 404;
+    throw error;
+  }
 
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, "subsequent", { country, state, city: suburb })
-        await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
-        await Campaigns.findByIdAndUpdate(
-            tag.campaignId,
-            {
-                $inc: { tapCount: 1 },
-                $inc: { scanCount: 1 }
-            }
-        )
+  // ── FIXED: read owner.ownerId, not owner.id (JWT payload uses "ownerId")
+  const isNFCActivated = NFCTag.status === "activated";
+  const tagOwnerId = NFCTag.ownerId ? NFCTag.ownerId.toString() : null;
+  const requesterId = owner?.ownerId ? owner.ownerId.toString() : null;
+  const isOwnerValid = Boolean(
+    isNFCActivated && tagOwnerId && requesterId && tagOwnerId === requesterId
+  );
 
-        return res.status(200).json({
-            success: true,
-            message: "Tap successful, welcome back!",
-            tapToken
-        })
-    }
+  const tapType =
+    isNFCActivated && isOwnerValid
+      ? "subsequent"
+      : !isNFCActivated && !isOwnerValid
+        ? "fresh"
+        : "illegal";
 
-    // if NFC is not activated and no owner's token, fresh tap - initiate tag activation process
-    if (!isNFCActivated && !isOwnerValid) {  //synonymous to signup
-        // update 
-        // tagModel - tapCount, lastTappedAt
-        // campaignModel - tapCount, tagCount, scanCount, claims, conversionRate
+  const artistId = NFCTag.artistId || tag.artistId || NFCTag.campaignId;
+  const campaignId = NFCTag.campaignId || tag.campaignId;
 
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, "fresh", { country, state, city: suburb })
-        await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
-        await Campaigns.findByIdAndUpdate(
-            tag.campaignId,
-            {
-                $inc: { tapCount: 1 },
-                $inc: { scanCount: 1 },
-            }
-        )
+  if (isNFCActivated && isOwnerValid) {
+    const tapToken = await generateJWT({ tagId }, "tapToken");
 
-        const tapToken = generateJWT({ tagId }, "tapToken")
+    await tapTag({
+      tagId,
+      ownerId: owner?.ownerId,
+      success: true,
+      deviceType: req.body.deviceType,
+      tapType,
+      location: { country, state, city: suburb },
+      artistId,
+      campaignId,
+    });
 
-        return res.status(200).json({
-            success: true,
-            message: "Fresh tap detected. Proceed to activate",
-            tapToken
-        })
-    }
+    await Tags.findByIdAndUpdate(tagId, {
+      $inc: { tapCount: 1 },
+      lastTappedAt: new Date(),
+    });
 
-    // if NFC is activated and owner's token is not valid, reject - strange access
-    if (isNFCActivated && !isOwnerValid) {
-        await tapTag(tagId, owner?.id, true, req.body.deviceType, "illegal", { country, state, city: suburb })
-        await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
-        await Campaigns.findByIdAndUpdate(
-            tag.campaignId,
-            {
-                $inc: { tapCount: 1 },
-                $inc: { scanCount: 1 }
-            }
-        )
+    await Campaigns.findByIdAndUpdate(campaignId, {
+      $inc: { tapCount: 1, scanCount: 1 },
+    });
 
-        const error = new Error("Access denied! Merch claimed by another fan")
-        error.statusCode = 403
-        throw error
-    }
+    return res.status(200).json({
+      success: true,
+      message: "Tap successful, welcome back!",
+      tapToken,
+    });
+  }
 
-})
+  if (!isNFCActivated && !isOwnerValid) {
+    await tapTag({
+      tagId,
+      ownerId: owner?.ownerId,
+      success: true,
+      deviceType: req.body.deviceType,
+      tapType,
+      location: { country, state, city: suburb },
+      artistId,
+      campaignId,
+    });
 
+    await Tags.findByIdAndUpdate(tagId, {
+      $inc: { tapCount: 1 },
+      lastTappedAt: new Date(),
+    });
+
+    await Campaigns.findByIdAndUpdate(campaignId, {
+      $inc: { tapCount: 1, scanCount: 1 },
+    });
+
+    const tapToken = await generateJWT({ tagId }, "tapToken");
+
+    return res.status(200).json({
+      success: true,
+      message: "Fresh tap detected. Proceed to activate",
+      tapToken,
+    });
+  }
+
+  if (isNFCActivated && !isOwnerValid) {
+    await tapTag({
+      tagId,
+      ownerId: owner?.ownerId,
+      success: true,
+      deviceType: req.body.deviceType,
+      tapType,
+      location: { country, state, city: suburb },
+      artistId,
+      campaignId,
+    });
+
+    await Tags.findByIdAndUpdate(tagId, {
+      $inc: { tapCount: 1 },
+      lastTappedAt: new Date(),
+    });
+
+    await Campaigns.findByIdAndUpdate(campaignId, {
+      $inc: { tapCount: 1, scanCount: 1 },
+    });
+
+    // Look up the owner's first name and the campaign's saved socials
+    // so the fan page can name the owner and show "Follow the artist" links.
+    const [tagOwner, campaignPage] = await Promise.all([
+      NFCTag.ownerId
+        ? Fans.findById(NFCTag.ownerId).select("firstName")
+        : null,
+      campaignId
+        ? CampaignPages.findOne({ campaignId }).select("pageStructure.socials")
+        : null,
+    ]);
+
+    const error = new Error("Access denied! Merch claimed by another fan");
+    error.statusCode = 403;
+    error.ownerFirstName = tagOwner?.firstName || null;
+    error.socials = campaignPage?.pageStructure?.socials || null;
+    throw error;
+  }
+
+  // ── SAFETY NET
+  const error = new Error("Unexpected tag state. Please try again or contact support.");
+  error.statusCode = 400;
+  throw error;
+});
 
 const activateMerch = asyncHandler(async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    const session = await mongoose.startSession()
+  const tagId = req.tag.tagId;
+  const tag = await Tags.findById(tagId).session(session);
 
-    session.startTransaction()
+  // Check if tag exists
+  if (!tag) {
+    const error = new Error("Tag not found");
+    error.statusCode = 404;
+    throw error;
+  }
 
-    // validate that tag hasn't been activated
-    const tagId = req.tag.id
-    const tag = await Tags.findById(tagId).session(session)
-    const hasTagBeenActivated = tag.status === "activated"
+  const hasTagBeenActivated = tag.status === "activated";
 
-    // register owner
-    const { owner } = req
-    owner && await validateObjectId(owner.id, Fans, "owner")
+  // ── FIXED: read owner.ownerId, not owner.id
+  const { owner } = req;
+  if (owner) {
+    await validateObjectId(owner.ownerId, Fans, "owner");
+  }
 
-    try {
+  try {
+    if (!hasTagBeenActivated) {
+      const { firstName, lastName, email, phone, deviceType, location, consentGiven } = req.body;
 
-        if (!hasTagBeenActivated) {
+      const { country: locCountry, state: locState, city: locCity } = location || {};
+      let locationData = {
+        suburb: locCity || null,
+        state: locState || null,
+        country: locCountry || null,
+      };
+      const { suburb, state, country } = locationData;
 
-            const { firstName, lastName, email, phone, deviceType, location, consentGiven } = req.body;
+      let fan;
+      if (!owner) {
+        fan = await createFan(firstName, lastName, email, phone, consentGiven, session);
+      } else {
+        // ── FIXED: read owner.ownerId
+        fan = await Fans.findById(owner.ownerId);
+      }
 
-            // get location
-            const { latitude, longitude } = location
-            const { suburb, state, country } = await getLocation(latitude, longitude)
+      const activatedTag = await activateTag(
+        tagId,
+        fan._id,
+        { country, state, city: suburb },
+        deviceType,
+        session
+      );
 
-            // if not owner, register fan
-            let fan
-            if (!owner) {
-                fan = await createFan(firstName, lastName, email, phone, consentGiven, session)
-            }
-            else if (owner) {
-                fan = await Fans.findById(owner.id)
-            }
+      const artistId = tag.artistId || activatedTag.artistId || tag.campaignId;
+      const campaignId = tag.campaignId || activatedTag.campaignId;
 
-            // activate tag
-            const activatedTag = await activateTag(tagId, fan._id, { country, state, city: suburb }, deviceType, session)
+      await tapTag({
+        tagId,
+        ownerId: fan._id,
+        success: true,
+        deviceType,
+        tapType: "fresh",
+        location: { country, state, city: suburb },
+        artistId,
+        campaignId,
+        session,
+      });
 
-            // track tap
-            await tapTag(tagId, fan._id, true, deviceType, { country, state, city: suburb }, session)
+      await Campaigns.findByIdAndUpdate(
+        campaignId,
+        {
+          $inc: { tagCount: 1, claims: 1 },
+        },
+        { returnDocument: "after", runValidators: true }
+      );
 
-            // update campaign
-            await Campaigns.findByIdAndUpdate(
-                tag.campaignId,
-                {
-                    $inc: { tagCount: 1 },
-                    $inc: { claims: 1 },
-                },
-                { returnDocument: "after", runValidators: true }
-            )
+      const tapToken = await generateJWT({ tagId }, "tapToken");
+      const ownerToken = await generateOwnerToken(
+        { ownerId: activatedTag.ownerId },
+        "ownerToken"
+      );
 
+      await session.commitTransaction();
 
-            const tapToken = await generateJWT({ tagId }, "tapToken")
-
-            await session.commitTransaction()
-
-            return res.status(201).json({
-                success: true,
-                message: "Tag activation successful",
-                data: {
-                    activatedTag,
-                    tapToken
-                }
-            })
-        }
-
-        const error = new Error("Action denied on activated tag.")
-        error.statusCode = 400
-        throw error
+      return res.status(201).json({
+        success: true,
+        message: "Tag activation successful",
+        data: {
+          activatedTag,
+          tapToken,
+          ownerToken,
+        },
+      });
     }
-    catch (error) {
-        await session.abortTransaction()
-        throw error
-    }
-    finally {
-        session.endSession()
-        await Tags.findByIdAndUpdate(tagId, { $inc: { tapCount: 1 }, lastTappedAt: new Date() })
-    }
-})
 
+    const error = new Error("Action denied on activated tag.");
+    error.statusCode = 400;
+    throw error;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+    await Tags.findByIdAndUpdate(tagId, {
+      $inc: { tapCount: 1 },
+      lastTappedAt: new Date(),
+    });
+  }
+});
 
 const getCampaignPageResources = asyncHandler(async (req, res) => {
+  const tagId = req.tag.tagId;
+  const { owner } = req;
 
-    const tagId = req.tag.id
-    const { owner } = req
-    await validateObjectId(owner.id, Fans, "owner")
+  if (!owner?.ownerId) {
+    const error = new Error("Owner token is required");
+    error.statusCode = 401;
+    throw error;
+  }
 
-    const tag = await Tags.findOne({ _id: tagId, ownerId: owner.id })
-    if (!tag) {
-        const error = new Error("Tag not found")
-        error.statusCode = 401
-        throw error
-    }
+  await validateObjectId(owner.ownerId, Fans, "owner");
 
-    const campaignId = tag.campaignId
-    const campaignPageResources = await CampaignPerks.find({ campaignId }).populate("perkId")
+  const tag = await Tags.findOne({ _id: tagId, ownerId: owner.ownerId });
+  if (!tag) {
+    const error = new Error("Tag not found or does not belong to you");
+    error.statusCode = 401;
+    throw error;
+  }
 
-    return res.status(200).json({
-        success: true,
-        message: "Campaign resources retrieved",
-        data: campaignPageResources
-    })
+  const campaignId = tag.campaignId;
 
-})
+  const [campaignPageResources, campaign, campaignPage] = await Promise.all([
+    CampaignPerks.find({ campaignId }).populate("perkId"),
+    Campaigns.findById(campaignId).select("campaignName"),
+    CampaignPages.findOne({ campaignId }),
+  ]);
 
+  return res.status(200).json({
+    success: true,
+    message: "Campaign resources retrieved",
+    data: {
+      campaign: {
+        campaignId,
+        campaignName: campaign?.campaignName || null,
+        pageStructure: campaignPage?.pageStructure || {
+          version: 1,
+          theme: {},
+          blocks: [],
+        },
+      },
+      resources: campaignPageResources,
+    },
+  });
+});
 
 const getCampaignPageResource = asyncHandler(async (req, res) => {
+  const { resourceId } = req.params;
+  const { owner } = req;
 
-    const { resourceId } = req.params  //resourceId = campaignPerk _id
-    await validateObjectId(resourceId, CampaignPerks, "resource")
+  if (!owner?.ownerId) {
+    const error = new Error("Owner token is required");
+    error.statusCode = 401;
+    throw error;
+  }
 
-    const campaignPageResource = await CampaignPerks.findById(resourceId).populate("perkId")
+  await validateObjectId(resourceId, CampaignPerks, "resource");
 
-    return res.status(200).json({
-        success: true,
-        message: "Campaign resource retrieved",
-        data: campaignPageResource
-    })
+  const campaignPageResource = await CampaignPerks.findById(resourceId).populate("perkId");
 
-})
+  if (!campaignPageResource) {
+    const error = new Error("Campaign resource not found");
+    error.statusCode = 404;
+    throw error;
+  }
 
+  const [campaign, campaignPage] = await Promise.all([
+    Campaigns.findById(campaignPageResource.campaignId).select("campaignName"),
+    CampaignPages.findOne({ campaignId: campaignPageResource.campaignId }),
+  ]);
 
-
+  return res.status(200).json({
+    success: true,
+    message: "Campaign resource retrieved",
+    data: {
+      campaign: {
+        campaignId: campaignPageResource.campaignId,
+        campaignName: campaign?.campaignName || null,
+        pageStructure: campaignPage?.pageStructure || {
+          version: 1,
+          theme: {},
+          blocks: [],
+        },
+      },
+      resource: campaignPageResource,
+    },
+  });
+});
 
 module.exports = {
-    tap,
-    activateMerch,
-    getCampaignPageResources,
-    getCampaignPageResource
-}
+  tap,
+  activateMerch,
+  getCampaignPageResources,
+  getCampaignPageResource,
+};

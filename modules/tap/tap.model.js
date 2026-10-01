@@ -39,11 +39,11 @@ const tapSchema = new mongoose.Schema(
             required: true
         },
 
-        deviceType: {
-            type: String,
-            enum: ["mobile", "tablet", "desktop", "unknown"],
-            default: "unknown"
-        },
+       deviceType: {
+    type: String,
+    enum: ["android", "ios", "web"],
+    default: "web"
+},
 
         location: {
             country: String,

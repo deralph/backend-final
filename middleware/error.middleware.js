@@ -1,6 +1,13 @@
 const errorMiddleware = (err, req, res, next) => {
+  const body = {
+    success: false,
+    message: err.message || "Server Error",
+  };
 
-    return res.status(err.statusCode || 500).json({ success: false, message: err.message || "Server Error" })
-}
+  if (err.ownerFirstName) body.ownerFirstName = err.ownerFirstName;
+  if (err.socials) body.socials = err.socials;
 
-module.exports = errorMiddleware
+  return res.status(err.statusCode || 500).json(body);
+};
+
+module.exports = errorMiddleware;

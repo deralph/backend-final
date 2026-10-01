@@ -1,0 +1,58 @@
+const Taps = require("./tap.model")
+// CHANGED: added this import — needed to look up a campaign's artistId,
+// since the Tap document requires artistId but nothing was providing it.
+const Campaigns = require("../campaign/model/campaign.model.js")
+
+// CHANGED: added this helper. The Tap model's deviceType enum is
+// ["mobile","tablet","desktop","unknown"], but the frontend (and
+// fanActivationSchema) sends "android"/"ios"/"web" — two different
+// contracts for the same field on the backend. Without this mapping,
+// Mongoose validation rejects every real request with "android is not a
+// valid enum value for path deviceType".
+function mapDeviceType(deviceType) {
+    if (deviceType === "android" || deviceType === "ios") return "mobile"
+    if (deviceType === "web") return "desktop"
+    return "unknown"
+}
+
+// CHANGED: signature was positional —
+//   async function tapTag(tagId, ownerId, success, deviceType, location, tapType, session)
+// — but every call site in tap.controller.js passes arguments in a
+// different order than that, so parameters were silently receiving the
+// wrong values (e.g. `location` was actually receiving the string
+// "subsequent", and `tapType` was receiving the location object).
+// Switched to named params so this class of bug can't happen again, and
+// call sites in tap.controller.js need to be updated to pass an object.
+async function tapTag({ tagId, campaignId, ownerId, success, deviceType, location, tapType, session }) {
+    // CHANGED: artistId/campaignId were never set on the Tap document at
+    // all before, even though the schema marks both as required. Both are
+    // derived here — campaignId is passed in by the caller (from the tag
+    // document), and artistId is looked up from that campaign.
+    let artistId
+    if (campaignId) {
+        const campaign = await Campaigns.findById(campaignId).session(session)
+        artistId = campaign?.artistId
+    }
+
+    const tap = new Taps({
+        tagId,
+        // CHANGED: now included — was missing entirely.
+        campaignId,
+        // CHANGED: now included — was missing entirely.
+        artistId,
+        userId: ownerId,
+        success,
+        tapType,
+        // CHANGED: now passed through mapDeviceType() instead of the raw
+        // value, so "android"/"ios"/"web" don't fail the model's enum.
+        deviceType: mapDeviceType(deviceType),
+        // CHANGED: guarded with a null check — previously assumed
+        // `location` was always an object and crashed if it wasn't.
+        location: location
+            ? { country: location.country, state: location.state, city: location.city }
+            : undefined,
+    })
+    await tap.save({ session })
+}
+
+module.exports = { tapTag }
