@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createCampaign, createCampaignPage, getCampaigns } = require('../controller/campaign.controller');
+const { createCampaign, createCampaignPage, getCampaigns, deleteCampaign} = require('../controller/campaign.controller');
 const auth = require("../../../middleware/auth.middleware")
 const validate = require("../../../middleware/validate")
 const upload = require("../../../middleware/upload.middleware")
@@ -285,8 +285,8 @@ router.post("/:campaignId/pages", auth, createCampaignPage)
 // get artist campaigns
 router.get("/", auth, getCampaigns)
 
-
-
+// delete artist campaign 
+router.delete("/:campaignId, auth, deleteCampaign) 
 
 
 
