@@ -115,10 +115,23 @@ const getCampaigns = asyncHandler(async (req, res) => {
 
 
 
+const deleteCampaign = asyncHandler(async (req, res) => {
+    const {campaignId} = req.params;
+
+
+    const deletedCampaign = await Camapaigns.findByIdAndDelete(campaignId)
+
+        return res.status(201).json({
+        success: true,
+        message: "Campaigns deleted successfully."
+    });
+});
+
 
 
 module.exports = {
     createCampaign,
     createCampaignPage,
-    getCampaigns
+    getCampaigns,
+    deleteCampaign
 }
