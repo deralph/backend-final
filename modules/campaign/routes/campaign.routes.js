@@ -286,7 +286,7 @@ router.post("/:campaignId/pages", auth, createCampaignPage)
 router.get("/", auth, getCampaigns)
 
 // delete artist campaign 
-router.delete("/:campaignId, auth, deleteCampaign) 
+router.delete("/:campaignId", auth, deleteCampaign);
 
 
 

@@ -119,12 +119,19 @@ const deleteCampaign = asyncHandler(async (req, res) => {
     const {campaignId} = req.params;
 
 
-    const deletedCampaign = await Camapaigns.findByIdAndDelete(campaignId)
+ const deletedCampaign = await Campaigns.findByIdAndDelete(campaignId);
 
-        return res.status(201).json({
-        success: true,
-        message: "Campaigns deleted successfully."
-    });
+if (!deletedCampaign) {
+  const error = new Error("Campaign not found");
+  error.statusCode = 404;
+  throw error;
+}
+
+return res.status(200).json({
+  success: true,
+  message: "Campaign deleted successfully."
+});
+
 });
 
 
