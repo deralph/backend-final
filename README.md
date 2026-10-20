@@ -1,3 +1,58 @@
+Fan,
+Cloudinary Setup,
+Email integration,
+Final Review and Correction
+
+
+8. Before testing
+Test these cases in order:
+1. Create a campaign with an image.
+2. Create one with audio.
+3. Create one with a link and no file.
+4. Create one with multiple perks.
+5. Submit an invalid perk ID and verify the campaign is not created.
+6. Force a database failure after upload and verify the Cloudinary asset is cleaned up.
+
+
+{
+  "blocks": [
+    {
+      "blockId": "header-1",
+      "type": "header",
+      "content": {
+        "text": "Welcome to my campaign"
+      },
+      "styles": {
+        "fontSize": "32px",
+        "color": "#111111"
+      }
+    },
+    {
+      "blockId": "image-1",
+      "type": "image",
+      "content": {
+        "alt": "Campaign artwork"
+      },
+      "styles": {
+        "width": "100%"
+      }
+    }
+  ],
+  "styles": {
+    "fontFamily": "Arial",
+    "backgroundColor": "#ffffff"
+  },
+  "settings": {
+    "title": "My Campaign"
+  },
+  "socialLinks": {
+    "instagram": "https://instagram.com/example",
+    "youtube": "",
+    "spotify": ""
+  }
+}
+
+
 product = {
     artistId,
     name,

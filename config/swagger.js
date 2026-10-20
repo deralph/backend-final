@@ -31,6 +31,11 @@ const options = {
             },
 
             {
+                name: "Artist",
+                description: "Artist endpoints",
+            },
+
+            {
                 name: "Campaigns",
                 description: "Campaign endpoints",
             },

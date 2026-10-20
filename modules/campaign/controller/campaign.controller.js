@@ -9,6 +9,9 @@ const Tiers = require("../../tier/tier.model")
 const generateTag = require("../../tags/tag.model")
 const throwError = require("../../../shared/utils/throwError")
 const { createCampaignService, createCampaignPageService, createCampaignPerks, getArtistCampaignsService } = require("../services/campaign.services");
+const {
+    deleteFromCloudinary,
+} = require("../../../services/cloudinaryService");
 
 
 // Validators
@@ -23,63 +26,117 @@ async function isCampaignExist(campaignId) {
 
 
 const createCampaign = asyncHandler(async (req, res) => {
-    const session = await mongoose.startSession()
-    try {
-        session.startTransaction()
-        const accountId = req.user.accountId
+    const session = await mongoose.startSession();
 
-        // collect data
+    let campaign;
+    let transactionCommitted = false;
+
+    try {
+        session.startTransaction();
+
+        const accountId = req.user.accountId;
+
         const {
             campaignName,
             startDate,
             endDate,
-            perks,
-            // products, Requirement changed: field eliminated, products are not added to campaign during campaign creation
+            perks = [],
             media,
             mediaType,
-            mediaUrl, // for already uploaded media i.e where mediaType == "Link"
+            mediaUrl,
             status,
         } = req.body;
 
-        const file = req.file
+        const file = req.file;
 
-        const [campaign, campaignPerks] = await createCampaignService(accountId, campaignName, startDate, endDate, perks, media, mediaType, mediaUrl, file, status, session)
+        const result = await createCampaignService(
+            accountId,
+            campaignName,
+            startDate,
+            endDate,
+            perks,
+            media,
+            mediaType,
+            mediaUrl,
+            file,
+            status,
+            session
+        );
 
-        // commit transaction
-        await session.commitTransaction()
+        // The service returns [campaign, campaignPerks].
+        campaign = Array.isArray(result) ? result[0] : result;
 
-        // return response
+        await session.commitTransaction();
+        transactionCommitted = true;
+
         res.status(201).json({
             message: "Campaign created successfully",
-            campaign
+            campaign,
         });
-    }
-    catch (error) {
-        await session.abortTransaction()
-        throw error
-    }
-    finally {
-        await session.endSession()
-    }
+    } catch (error) {
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
-})
+        // If the database transaction did not commit, remove the uploaded asset.
+        if (
+            !transactionCommitted &&
+            campaign?.filePublicId &&
+            campaign?.fileResourceType
+        ) {
+            try {
+                await deleteFromCloudinary(
+                    campaign.filePublicId,
+                    campaign.fileResourceType
+                );
+            } catch (cleanupError) {
+                console.error(
+                    "Failed to clean up campaign media after transaction failure:",
+                    cleanupError
+                );
+            }
+        }
+
+        throw error;
+    } finally {
+        await session.endSession();
+    }
+});
 
 
 const createCampaignPage = asyncHandler(async (req, res) => {
-    const accountId = req.user.accountId
-    const { campaignId } = req.params
-    const { pageStructure } = req.body
+    const accountId = req.user.accountId;
+    const { campaignId } = req.params;
 
-    const campaignPage = await createCampaignPageService(accountId, campaignId, pageStructure)
+    let { pageStructure } = req.body;
+
+    if (typeof pageStructure === "string") {
+        try {
+            pageStructure = JSON.parse(pageStructure);
+        } catch {
+            const error = new Error(
+                "pageStructure must contain valid JSON."
+            );
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+
+    const campaignPage = await createCampaignPageService(
+        accountId,
+        campaignId,
+        pageStructure,
+        req.files || []
+    );
 
     return res.status(201).json({
         success: true,
-        message: "Campaign page created",
+        message: "Campaign page created successfully.",
         data: {
-            campaignPage
-        }
-    })
-})
+            campaignPage,
+        },
+    });
+});
 
 
 const getCampaigns = asyncHandler(async (req, res) => {
@@ -116,21 +173,21 @@ const getCampaigns = asyncHandler(async (req, res) => {
 
 
 const deleteCampaign = asyncHandler(async (req, res) => {
-    const {campaignId} = req.params;
+    const { campaignId } = req.params;
 
 
- const deletedCampaign = await Campaigns.findByIdAndDelete(campaignId);
+    const deletedCampaign = await Campaigns.findByIdAndDelete(campaignId);
 
-if (!deletedCampaign) {
-  const error = new Error("Campaign not found");
-  error.statusCode = 404;
-  throw error;
-}
+    if (!deletedCampaign) {
+        const error = new Error("Campaign not found");
+        error.statusCode = 404;
+        throw error;
+    }
 
-return res.status(200).json({
-  success: true,
-  message: "Campaign deleted successfully."
-});
+    return res.status(200).json({
+        success: true,
+        message: "Campaign deleted successfully."
+    });
 
 });
 

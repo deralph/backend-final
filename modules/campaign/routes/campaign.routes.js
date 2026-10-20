@@ -1,18 +1,42 @@
 const express = require('express');
 const router = express.Router();
-const { createCampaign, createCampaignPage, getCampaigns, deleteCampaign} = require('../controller/campaign.controller');
+const { createCampaign, createCampaignPage, getCampaigns, deleteCampaign } = require('../controller/campaign.controller');
 const auth = require("../../../middleware/auth.middleware")
 const validate = require("../../../middleware/validate")
 const upload = require("../../../middleware/upload.middleware")
 const { createCampaignSchema } = require("../../../validators/campaign.validator")
 
 
+const normalizeCampaignBody = (req, res, next) => {
+    try {
+        const { perks } = req.body;
+
+        if (perks === undefined || perks === null || perks === "") {
+            req.body.perks = [];
+        } else if (typeof perks === "string") {
+            try {
+                const parsed = JSON.parse(perks);
+                req.body.perks = Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+                // Supports a single perk ID sent as a string.
+                req.body.perks = [perks];
+            }
+        } else if (!Array.isArray(perks)) {
+            req.body.perks = [perks];
+        }
+
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 /**
  * @swagger
  * /campaigns:
  *   post:
- *     summary: Create campaign
+ *     summary: Create a new campaign
  *     tags:
  *       - Campaigns
  *     security:
@@ -35,23 +59,22 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *                 example: "Summer Giveaway Campaign"
  *
  *               perks:
- *                 type: array
- *                 description: Array of perk IDs to associate with the campaign.
- *                 items:
- *                   type: string
- *                 example:
- *                   - "6889f6b4d3a8f2c1e5a9b123"
- *                   - "6889f6b4d3a8f2c1e5a9b124"
+ *                 type: string
+ *                 description: >
+ *                   JSON-encoded array of perk MongoDB ObjectIds.
+ *                   Example: ["6889f6b4d3a8f2c1e5a9b123",
+ *                   "6889f6b4d3a8f2c1e5a9b124"].
+ *                 example: '["6889f6b4d3a8f2c1e5a9b123","6889f6b4d3a8f2c1e5a9b124"]'
  *
  *               startDate:
  *                 type: string
  *                 format: date-time
- *                 example: "2026-08-01T10:00:00.000Z"
+ *                 example: "2026-11-01T10:00:00.000Z"
  *
  *               endDate:
  *                 type: string
  *                 format: date-time
- *                 example: "2026-08-31T23:59:59.000Z"
+ *                 example: "2026-11-30T23:59:59.000Z"
  *
  *               mediaType:
  *                 type: string
@@ -61,16 +84,20 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *                   - video
  *                   - document
  *                   - link
- *                 example: "image"
+ *                 example: image
  *
  *               media:
  *                 type: string
  *                 format: binary
- *                 description: Campaign media file to upload.
+ *                 description: >
+ *                   Campaign media file. Required for image, audio,
+ *                   video, and document campaigns. For link campaigns,
+ *                   provide mediaUrl instead.
  *
  *               mediaUrl:
  *                 type: string
- *                 description: URL of the campaign media when mediaType is link.
+ *                 format: uri
+ *                 description: External URL required when mediaType is link.
  *                 example: "https://example.com/campaign"
  *
  *               status:
@@ -78,7 +105,8 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *                 enum:
  *                   - active
  *                   - inactive
- *                 example: "active"
+ *                 description: Campaign status. Defaults to the model's configured value.
+ *                 example: active
  *
  *     responses:
  *       201:
@@ -87,11 +115,13 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *       400:
  *         description: |
  *           Possible errors:
- *             - Campaign name already exists.
- *             - One or more perks do not exist.
- *             - One or more perks have already been assigned to the campaign.
- *             - Media file is missing.
- *             - Invalid campaign dates.
+ *           - Required fields missing.
+ *           - Campaign name already exists.
+ *           - One or more perks do not exist or cannot be assigned.
+ *           - Required campaign media is missing.
+ *           - Uploaded file type does not match mediaType.
+ *           - Invalid campaign dates.
+ *           - Invalid perks JSON.
  *
  *       401:
  *         description: Unauthorized.
@@ -100,7 +130,7 @@ const { createCampaignSchema } = require("../../../validators/campaign.validator
  *         description: Internal server error occurred while creating the campaign.
  */
 // create campaign
-router.post("/", auth, validate(createCampaignSchema), upload.single("media"), createCampaign)
+router.post("/", auth, upload.single("media"), normalizeCampaignBody, validate(createCampaignSchema), createCampaign)
 
 
 /**
@@ -123,43 +153,84 @@ router.post("/", auth, validate(createCampaignSchema), upload.single("media"), c
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
  *               - pageStructure
  *             properties:
  *               pageStructure:
- *                 type: object
- *                 description: JSON representation of the campaign page layout.
- *                 example:
- *                   sections:
- *                     - type: hero
- *                       title: "Welcome to the Campaign"
- *                       subtitle: "Unlock exclusive perks"
- *                       backgroundImage: "https://cdn.intelimerch.com/hero.jpg"
- *                     - type: products
- *                       title: "Featured Merchandise"
- *                       items: []
- *                     - type: perks
- *                       title: "Exclusive Perks"
- *                       items: []
+ *                 type: string
+ *                 description: >
+ *                   JSON-stringified page structure containing blocks, shared styles,
+ *                   settings, and social links. Each block must have a unique blockId,
+ *                   a supported type, content, and optional styles.
+ *                 example: |
+ *                   {
+ *                     "blocks": [
+ *                       {
+ *                         "blockId": "hero-image",
+ *                         "type": "image",
+ *                         "content": {
+ *                           "alt": "Campaign hero image"
+ *                         },
+ *                         "styles": {
+ *                           "width": "100%"
+ *                         }
+ *                       },
+ *                       {
+ *                         "blockId": "welcome-text",
+ *                         "type": "text",
+ *                         "content": {
+ *                           "text": "Welcome to the campaign!"
+ *                         },
+ *                         "styles": {}
+ *                       },
+ *                       {
+ *                         "blockId": "campaign-button",
+ *                         "type": "button",
+ *                         "content": {
+ *                           "text": "Explore perks",
+ *                           "url": "https://example.com/perks"
+ *                         },
+ *                         "styles": {}
+ *                       }
+ *                     ],
+ *                     "styles": {},
+ *                     "settings": {},
+ *                     "socialLinks": {
+ *                       "instagram": "https://instagram.com/example",
+ *                       "youtube": "https://youtube.com/@example",
+ *                       "spotify": "https://open.spotify.com/artist/example"
+ *                     }
+ *                   }
+ *               file_hero-image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional image file associated with the block whose blockId is "hero-image".
+ *               status:
+ *                 type: string
+ *                 enum: [draft, published]
+ *                 description: >
+ *                   Only include this field if the API accepts status during creation.
  *     responses:
  *       201:
  *         description: Campaign page created successfully.
  *       400:
  *         description: |
  *           Possible errors:
- *             - Campaign does not exist.
+ *             - Campaign does not exist or does not belong to the authenticated artist.
  *             - Campaign page already exists.
- *             - Invalid page structure.
+ *             - Invalid page structure JSON.
+ *             - Invalid block type or duplicate block IDs.
+ *             - Invalid file upload.
  *       401:
  *         description: Unauthorized.
  *       500:
  *         description: Internal server error occurred while creating the campaign page.
  */
 // create campaign page
-router.post("/:campaignId/pages", auth, createCampaignPage)
+router.post("/:campaignId/pages", auth, upload.any(), createCampaignPage)
 
 
 /**
